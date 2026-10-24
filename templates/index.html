@@ -52,12 +52,12 @@ footer .shell{display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap
 
 .upload-panel{padding:19px 25px}.upload-heading{display:flex;gap:18px;align-items:flex-start;justify-content:space-between}.upload-heading strong{font-size:15px;color:#263f59}.upload-heading p{max-width:980px;margin:5px 0 12px;font-size:12px;color:#6b7b8f}.upload-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.upload-actions input{height:auto;min-height:44px;max-width:450px;padding:10px;font-size:12px}.ocr-indicator{font-size:11px;color:#536985;background:#edf3fa;border:1px solid #d8e4f1;border-radius:8px;padding:7px 10px;white-space:nowrap}
 .ocr-indicator.ok{background:#e9f6f2;color:#166b52}.ocr-indicator.warn{background:#fff4e4;color:#916322}
-.check-btn{display:block;border:1px solid #bfdaef;background:#f4f9ff;color:#245c92;padding:7px 10px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;margin:3px 0 10px}.check-btn:hover{background:#e2f0fc}.check-btn:disabled{opacity:.45;cursor:wait}.details-btn{background:none;border:0;padding:5px 0;text-decoration:underline;color:#2367ab;font-size:11px;cursor:pointer}.details-row td{padding:0;background:#f8fbfe;border-bottom:2px solid #d6e5f4}.details-grid{display:grid;grid-template-columns:repeat(4,minmax(155px,1fr));gap:12px;padding:18px 22px}.details-grid>div{padding:10px 12px;border-radius:6px;border:1px solid #e2eaf3;background:#fff;min-width:0}.details-grid label{font-weight:700;color:#7b89a0;font-size:10px;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px}.details-grid span{font-size:12px;color:#253c55;overflow-wrap:anywhere}.detail-heading{padding:13px 22px 0;font-weight:760;color:#36536d}.mini{font-size:11px;color:#71839b;margin-top:5px}.rec-date{font-size:12px;color:#273d56;font-weight:650}.rec-valid{font-size:11px;color:#587188;margin-top:6px}.more-status{display:inline-block;margin-top:6px;color:#8a6043;font-size:11px}
+.check-btn{display:block;border:1px solid #bfdaef;background:#f4f9ff;color:#245c92;padding:7px 10px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;margin:3px 0 10px}.check-btn:hover{background:#e2f0fc}.check-btn:disabled{opacity:.45;cursor:wait}.details-btn{background:none;border:0;padding:5px 0;text-decoration:underline;color:#2367ab;font-size:11px;cursor:pointer}.download-help{padding:9px 10px;border:1px solid #f2dec1;background:#fffaf1;border-radius:7px;color:#875e25;font-size:11px;margin:6px 0 9px;max-width:240px;overflow-wrap:anywhere}.download-help.ok{border-color:#c6e8d6;background:#f0f9f3;color:#256c48}.muted-note{font-size:11px;color:#6d7b8d;margin-top:5px}.details-row td{padding:0;background:#f8fbfe;border-bottom:2px solid #d6e5f4}.details-grid{display:grid;grid-template-columns:repeat(4,minmax(155px,1fr));gap:12px;padding:18px 22px}.details-grid>div{padding:10px 12px;border-radius:6px;border:1px solid #e2eaf3;background:#fff;min-width:0}.details-grid label{font-weight:700;color:#7b89a0;font-size:10px;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px}.details-grid span{font-size:12px;color:#253c55;overflow-wrap:anywhere}.detail-heading{padding:13px 22px 0;font-weight:760;color:#36536d}.mini{font-size:11px;color:#71839b;margin-top:5px}.rec-date{font-size:12px;color:#273d56;font-weight:650}.rec-valid{font-size:11px;color:#587188;margin-top:6px}.more-status{display:inline-block;margin-top:6px;color:#8a6043;font-size:11px}
 @media(max-width:780px){.details-grid{grid-template-columns:repeat(2,minmax(130px,1fr))}.upload-heading{flex-direction:column;gap:8px}.upload-actions input{max-width:100%}}
 </style>
 </head>
 <body>
-<header class="top"><div class="shell"><div class="brand"><span class="emblem"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.7h7l5 5V21H7z"/><path d="M14 3v5h5"/><path d="m3 13 2 2 4-4"/><path d="M10 13h6M10 17h6"/></svg></span><span><strong>Документы качества</strong><small>ПОИСК ДОКУМЕНТОВ НА СТРОИТЕЛЬНЫЕ МАТЕРИАЛЫ</small></span></div><div class="hbadge">Онлайн-версия · 3.0</div></div></header>
+<header class="top"><div class="shell"><div class="brand"><span class="emblem"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.7h7l5 5V21H7z"/><path d="M14 3v5h5"/><path d="m3 13 2 2 4-4"/><path d="M10 13h6M10 17h6"/></svg></span><span><strong>Документы качества</strong><small>ПОИСК ДОКУМЕНТОВ НА СТРОИТЕЛЬНЫЕ МАТЕРИАЛЫ</small></span></div><div class="hbadge">Онлайн-версия · 4.0</div></div></header>
 <main class="shell">
 <section class="intro"><div><h1>Поиск сертификатов, деклараций и паспортов</h1><p>Поиск открытых PDF с отображением названия, даты, номера, изготовителя, ГОСТ и сведений о файле.</p></div></section>
 <form id="search-form" class="panel">
@@ -73,13 +73,14 @@ footer .shell{display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap
 <section class="panel upload-panel" aria-label="Проверка загруженного PDF">
   <div class="upload-heading"><div><strong>Уже есть PDF? Проверьте его реквизиты</strong><p>Выберите сертификат, декларацию или паспорт на компьютере. Сайт прочитает его и покажет найденные реквизиты, даже если документ не удалось найти через интернет.</p></div><span class="ocr-indicator" id="ocr-state">Проверка OCR…</span></div>
   <div class="upload-actions"><input aria-label="Загрузить PDF" type="file" id="pdf-upload" accept="application/pdf,.pdf"><button type="button" class="btn light" id="upload-button">Проверить загруженный PDF</button></div>
-  <p class="inline-help">Файл передаётся на сервер по HTTPS для временного анализа и не сохраняется в каталоге сайта. Сервер может использовать временное хранилище. OCR первых двух страниц доступен на сервере. Не загружайте конфиденциальные документы без разрешения.</p>
+  <p class="inline-help">Файл передаётся на сервер по HTTPS для временного анализа и не сохраняется в каталоге сайта. Сервер может использовать временное хранилище. OCR первых трёх страниц доступен на сервере (до 25 МБ). Не загружайте конфиденциальные документы без разрешения.</p>
+<p class="inline-help"><b>Если найденный PDF не читается сервером:</b> нажмите «Открыть PDF» в результатах, сохраните файл на компьютер и загрузите сюда. PDF будет прочитан со стороны браузера, даже если сайт производителя блокирует сервер.</p>
 </section>
 <section id="results-region">
 <div class="results-head"><div><h2 class="results-title">Результаты поиска <span class="count" id="count">0</span></h2><div class="results-sub" id="results-sub">Укажите материал и нажмите «Найти документы»</div></div><div class="tools"><button id="export-button" class="toolbutton" type="button" disabled>↓ Выгрузить в Excel</button></div></div>
 <div class="notice"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#54799e" stroke-width="2" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></svg><div><strong>Проверка достоверности обязательна</strong>Поиск в интернете не подтверждает действительность сертификата, применимость к поставленной партии и подлинность файла. Проверяйте регистрационные данные в <a href="https://pub.fsa.gov.ru/rss/certificate" target="_blank" rel="noopener noreferrer">реестре сертификатов</a> или <a href="https://pub.fsa.gov.ru/rds/declaration" target="_blank" rel="noopener noreferrer">реестре деклараций</a> Росаккредитации. Паспорт качества нужно сопоставлять с фактической партией поставки.</div></div>
 <div id="loading" class="loading" hidden><span class="spinner"></span><span>Идёт интернет-поиск, просмотр страниц производителей и чтение доступных PDF-файлов…</span></div>
-<div id="error" class="error" hidden></div>
+<div id="error" class="error" role="alert" hidden></div>
 <div class="table-wrap" id="table-wrap"><div class="empty-state" id="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M4 2h10l6 6v13H4zM14 2v6h6M7 13h10M7 17h8"/></svg><strong>Пока нет результатов</strong>Здесь появятся документы, найденные по вашему запросу.</div><table id="results-table" hidden><thead><tr><th style="min-width:290px">Найденный документ</th><th>Материал по PDF</th><th>Номер, дата и срок действия</th><th>Изготовитель</th><th>Соответствие материалу</th><th>Источник и файл</th></tr></thead><tbody id="tbody"></tbody></table></div>
 <p class="inline-help" style="margin:12px 2px" id="warnings"></p>
 </section>
@@ -100,13 +101,14 @@ const exportButton=document.getElementById('export-button');
 const warnings=document.getElementById('warnings');
 const uploadButton=document.getElementById('upload-button');
 let latest=[];
-const missing=()=>{let el=document.createElement('span');el.className='empty';el.textContent='Не удалось извлечь';return el};
+let uploadForResult=false;
+const missing=()=>{let el=document.createElement('span');el.className='empty';el.textContent='Нет подтверждённых данных';return el};
 const textNode=s=>s?document.createTextNode(String(s)):missing();
 const div=(cls,text)=>{let el=document.createElement('div');el.className=cls;el.textContent=text||'';return el};
 const td=(row,content,cls='')=>{let el=document.createElement('td');if(cls)el.className=cls;el.append(content);row.append(el);return el};
 function secureLink(url,label){const a=document.createElement('a');a.className='oplink';a.textContent=label;a.href=/^https?:\/\//.test(url)?url:'#';a.target='_blank';a.rel='noopener noreferrer';return a}
 function fmtSize(bytes){if(!bytes)return 'Неизвестен';return bytes>=1048576?(bytes/1048576).toFixed(1)+' МБ':Math.round(bytes/1024)+' КБ'}
-const infoFields=[['material_in_document','Материал в документе'],['document_type','Вид документа'],['document_number','Номер документа'],['document_date','Дата документа'],['valid_until','Действителен до'],['manufacturer','Изготовитель'],['gost_in_document','ГОСТ / ТУ'],['pdf_filename','Имя файла'],['pdf_pages','Страниц'],['pdf_title','Заголовок PDF'],['ocr_status','Распознавание'],['source_note','Источник сведений']];
+const infoFields=[['read_error','Ошибка получения PDF'],['material_in_document','Материал в документе'],['document_type','Вид документа'],['document_number','Номер документа'],['document_date','Дата документа'],['valid_until','Действителен до'],['manufacturer','Изготовитель'],['gost_in_document','ГОСТ / ТУ'],['pdf_filename','Имя файла'],['pdf_pages','Страниц'],['pdf_bytes','Размер (байт)'],['pdf_title','Заголовок PDF'],['ocr_status','Распознавание'],['source_note','Источник сведений']];
 function addDetails(row,item){
  const drow=document.createElement('tr');drow.className='details-row';drow.hidden=true;
  const cell=document.createElement('td');cell.colSpan=6;cell.append(div('detail-heading','Реквизиты и свойства файла'));
@@ -120,24 +122,28 @@ function render(items){
  for(const item of items){
   const tr=document.createElement('tr');
   const first=td(tr,div('doc-title',item.title||item.pdf_filename||'Без названия'));
-  first.append(div('doc-sub',item.document_type||'Тип не установлен'));
+  first.append(div('doc-sub',(item.document_type||'Тип не установлен')+(item.document_type_verified?' · по PDF':' · по названию ссылки')));
   const tag=document.createElement('span');tag.className='filetag'+(item.is_pdf?'':' page');tag.textContent=item.is_pdf?'PDF':'СТРАНИЦА';first.append(tag);
   if(item.pdf_pages)first.append(div('mini',item.pdf_pages+' стр. · '+fmtSize(item.pdf_bytes)));
+  else if(item.pdf_filename)first.append(div('mini','Имя по ссылке: '+item.pdf_filename));
   const p=td(tr,textNode(item.material_in_document),'value');p.append(div('small',item.gost_in_document||'ГОСТ/ТУ не извлечён'));
+  if(!item.pdf_read)p.append(div('muted-note','Реквизиты ожидают чтения PDF')); 
   const rec=td(tr,textNode(item.document_number),'value');rec.append(div('rec-date',item.document_date||'Дата не извлечена'));if(item.valid_until)rec.append(div('rec-valid','Действителен до: '+item.valid_until));
   td(tr,textNode(item.manufacturer),'value');
   const status=td(tr,document.createElement('span'));const pill=status.firstElementChild;pill.className='status '+(item.status==='Совпадение признаков'?'ok':item.status==='Возможное расхождение'?'bad':'warn');pill.textContent=item.status||'Требует проверки';status.append(div('status-detail',item.explanation||''));
   const links=td(tr,document.createElement('div'));const linkContainer=links.firstElementChild;
   if(item.url)linkContainer.append(secureLink(item.url,item.is_pdf?'↗ Открыть PDF':'↗ Открыть страницу'));
   if(item.source_page&&item.source_page!==item.url)linkContainer.append(secureLink(item.source_page,'↗ Источник'));
-  links.append(div('small',item.pdf_read?(item.ocr_used?'Реквизиты из OCR скана':'PDF прочитан'):(item.pdf_scanned?'Скан: текст не распознан':item.read_error?'Ошибка чтения: '+item.read_error:'PDF не прочитан')));
+  links.append(div('small',item.pdf_read?(item.ocr_used?'Реквизиты получены из OCR скана':'Реквизиты получены из PDF'):(item.pdf_scanned?'Скан: текст не распознан':item.read_error?'Сервер не смог скачать PDF':'Текст PDF не прочитан')));
+  if(item.read_error)links.append(div('download-help',item.read_error));
+  if(item.is_pdf&&!item.pdf_read){const uploadThis=document.createElement('button');uploadThis.className='check-btn';uploadThis.type='button';uploadThis.textContent='↑ Проверить скачанный PDF';links.append(uploadThis);uploadThis.addEventListener('click',()=>{uploadForResult=true;const picker=document.getElementById('pdf-upload');picker.value='';picker.click()})}
   const expand=document.createElement('button');expand.className='details-btn';expand.textContent='Все сведения о документе ▾';expand.type='button';links.append(expand);
   if(item.is_pdf&&!item.from_upload){
     const check=document.createElement('button');check.className='check-btn';check.type='button';check.textContent='↻ Повторно прочитать PDF';links.append(check);
     check.addEventListener('click',async()=>{
       check.disabled=true;check.textContent='Читаю PDF…';error.hidden=true;
       try{const response=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:item.url,inspect_token:item.inspect_token,material:item.requested_material||document.getElementById('material').value})});const data=await response.json();if(!response.ok)throw Error(data.error||'Ошибка анализа');Object.assign(item,data.metadata);render(latest)}
-      catch(err){error.textContent=err.message;error.hidden=false;check.disabled=false;check.textContent='↻ Повторить попытку'}
+      catch(err){item.read_error=err.message;render(latest);error.textContent='Файл по ссылке недоступен серверу. Сохраните PDF через «Открыть PDF» и воспользуйтесь кнопкой «Проверить скачанный PDF». '+err.message;error.hidden=false}
     });
   }
   tbody.append(tr);const detailRow=addDetails(tr,item);
@@ -150,18 +156,30 @@ form.addEventListener('submit',async e=>{
  e.preventDefault();error.hidden=true;warnings.textContent='';loading.hidden=false;button.disabled=true;exportButton.disabled=true;sub.textContent='Поиск по открытым интернет-источникам…';latest=[];render([]);empty.querySelector('strong').textContent='Поиск выполняется';
  try{const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({material:document.getElementById('material').value,document_type:document.getElementById('dtype').value,manufacturer:document.getElementById('manufacturer').value,gost:document.getElementById('gost').value,limit:30})});
  const data=await response.json();if(!response.ok)throw Error(data.error||'Не удалось выполнить поиск');latest=data.results||[];render(latest);exportButton.disabled=!latest.length;
- const n=latest.filter(x=>x.pdf_read).length;sub.textContent=`Найдено ${latest.length} результатов · прочитан текст ${n} PDF. Для других PDF нажмите «Повторно прочитать PDF».`;
+ const n=latest.filter(x=>x.pdf_read).length;const blocked=latest.filter(x=>x.read_error).length;sub.textContent=`Найдено ${latest.length} ссылок · текст получен из ${n} PDF · недоступны для чтения: ${blocked}.`;
+ if(blocked)warnings.textContent='Некоторые сайты запрещают скачивать файлы с серверов. Для них откройте PDF в браузере, сохраните и загрузите в блок проверки PDF выше.';
  if(!latest.length){empty.querySelector('strong').textContent='Подходящие ссылки не найдены';empty.lastChild.textContent=' Попробуйте уточнить материал, ГОСТ или изготовителя.'}
- if(data.warnings?.length)warnings.textContent='Некоторые поисковые запросы завершились с ошибкой: '+data.warnings.slice(0,2).join(' | ');
+ if(data.warnings?.length)warnings.textContent+=' Некоторые поисковые запросы не выполнены: '+data.warnings.slice(0,2).join(' | ');
  }catch(err){sub.textContent='Поиск не завершён';error.textContent=err.message;error.hidden=false;empty.querySelector('strong').textContent='Поиск не выполнен'}
  finally{loading.hidden=true;button.disabled=false}
 });
-uploadButton.addEventListener('click',async()=>{
- const file=document.getElementById('pdf-upload').files[0];if(!file){error.textContent='Сначала выберите PDF-файл';error.hidden=false;return}
- uploadButton.disabled=true;uploadButton.textContent='Читаю документ…';error.hidden=true;
- try{const fd=new FormData();fd.append('file',file);fd.append('material',document.getElementById('material').value);const response=await fetch('/api/upload',{method:'POST',body:fd});const data=await response.json();if(!response.ok)throw Error(data.error||'Ошибка обработки файла');latest.unshift(data.metadata);render(latest);exportButton.disabled=false;sub.textContent='Результаты включают PDF, загруженный с компьютера';document.getElementById('results-region').scrollIntoView({behavior:'smooth'});}
- catch(err){error.textContent=err.message;error.hidden=false}
- finally{uploadButton.disabled=false;uploadButton.textContent='Проверить загруженный PDF'}
+async function analyzeUploadedFile(file){
+ if(!file){error.textContent='Сначала выберите PDF-файл';error.hidden=false;return}
+ if(!/\.pdf$/i.test(file.name)&&file.type!=='application/pdf'){error.textContent='Выберите файл PDF.';error.hidden=false;return}
+ uploadButton.disabled=true;uploadButton.textContent='Распознаю PDF…';error.hidden=true;
+ try{
+  const fd=new FormData();fd.append('file',file);fd.append('material',document.getElementById('material').value);
+  const response=await fetch('/api/upload',{method:'POST',body:fd});const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Не удалось обработать PDF');
+  latest.unshift(data.metadata);render(latest);exportButton.disabled=false;
+  sub.textContent='Файл загружен и обработан. Его реквизиты показаны в первой строке.';
+  document.getElementById('results-region').scrollIntoView({behavior:'smooth'});
+ }catch(err){error.textContent=err.message;error.hidden=false}
+ finally{uploadButton.disabled=false;uploadButton.textContent='Проверить загруженный PDF';uploadForResult=false}
+}
+uploadButton.addEventListener('click',()=>analyzeUploadedFile(document.getElementById('pdf-upload').files[0]));
+document.getElementById('pdf-upload').addEventListener('change',e=>{
+ if(uploadForResult&&e.target.files.length){analyzeUploadedFile(e.target.files[0]);}
 });
 (async()=>{try{const r=await fetch('/api/ocr-status');const d=await r.json();const s=document.getElementById('ocr-state');s.textContent=d.ready?'✓ OCR сканов доступен':'OCR сканов: '+d.message;s.className='ocr-indicator '+(d.ready?'ok':'warn')}catch(_){document.getElementById('ocr-state').textContent='OCR: проверка недоступна'}})();
 exportButton.addEventListener('click',async()=>{if(!latest.length)return;exportButton.disabled=true;try{const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({results:latest})});if(!r.ok)throw Error('Не удалось создать Excel');const blob=await r.blob(),url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='dokumenty_kachestva.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}catch(err){error.textContent=err.message;error.hidden=false}finally{exportButton.disabled=false}});

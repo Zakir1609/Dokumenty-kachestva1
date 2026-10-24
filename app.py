@@ -34,7 +34,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 27 * 1024 * 1024
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.environ.get('APP_SECRET_KEY') or secrets.token_hex(32)
 signer = URLSafeTimedSerializer(app.secret_key, salt='pdf-inspect-url-v1')
@@ -43,7 +43,7 @@ traffic = defaultdict(deque)
 traffic_lock = Lock()
 search_cache = OrderedDict()
 cache_lock = Lock()
-SEARCH_CACHE_TTL = 600
+SEARCH_CACHE_TTL = 180
 SEARCH_CACHE_SIZE = 24
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -70,13 +70,17 @@ DOC_PATTERNS = {
     'test': r'протокол(?:ы|а)?\s+испытани[йя]',
     'refusal': r'отказн(?:ое|ого)\s+письм[оа]',
 }
-HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; QualityDocsResearch/3.0; document lookup tool)'}
-MAX_PDF_BYTES = 10 * 1024 * 1024
-PDF_PREVIEW_PAGES = 5
-MAX_OCR_PAGES = 2
-MAX_SEARCH_QUERIES = 3
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'application/pdf,text/html,application/xhtml+xml,*/*;q=0.8',
+    'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.6',
+}
+MAX_PDF_BYTES = 25 * 1024 * 1024
+PDF_PREVIEW_PAGES = 6
+MAX_OCR_PAGES = 3
+MAX_SEARCH_QUERIES = 5
 MAX_SEARCH_RESULTS = 28
-MAX_PDFS_TO_READ = 6
+MAX_PDFS_TO_READ = 5
 MAX_HTML_PAGES_TO_EXPAND = 5
 
 
@@ -169,29 +173,56 @@ def safe_http_url(url: str) -> bool:
         return False
 
 
-def safe_request(url: str, *, max_bytes: int = MAX_PDF_BYTES, timeout: int = 11):
-    """Download bounded HTTP response. Each redirect target is validated."""
+def error_for_download(exc: Exception) -> str:
+    """Explain remote file failures without exposing Python stack traces."""
+    if isinstance(exc, (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, TimeoutError, socket.timeout)):
+        return 'Удалённый сайт не ответил вовремя. Откройте PDF в браузере и загрузите его в форму на сайте.'
+    if isinstance(exc, requests.exceptions.SSLError):
+        return 'Ошибка защищённого соединения с сайтом документа (TLS). Можно загрузить PDF с компьютера.'
+    if isinstance(exc, requests.exceptions.HTTPError):
+        code = exc.response.status_code if exc.response is not None else None
+        if code in (401, 403):
+            return f'Сайт документа ограничил доступ (HTTP {code}). Попробуйте открыть PDF в браузере и загрузить его.'
+        if code == 404:
+            return 'Файл по ссылке не найден (HTTP 404).'
+        return f'Сайт документа вернул HTTP {code or "ошибку"}. Проверьте ссылку.'
+    if isinstance(exc, requests.exceptions.ConnectionError):
+        return 'Сайт документа разорвал соединение или недоступен с сервера приложения. Откройте PDF в браузере и загрузите файл.'
+    if isinstance(exc, (socket.gaierror, OSError)):
+        return 'Не удалось установить соединение с сайтом документа.'
+    return tidy(str(exc), 190) or 'Не удалось получить файл.'
+
+
+def safe_request(url: str, *, max_bytes: int = MAX_PDF_BYTES, timeout: int = 10):
+    """Bounded download with checked redirects. Network failure is not invalid certificate."""
     current = url
     for _ in range(5):
         assert_public_dns(current)
-        response = requests.get(current, timeout=timeout, headers=HEADERS,
-                                stream=True, allow_redirects=False)
-        if response.status_code in (301, 302, 303, 307, 308):
-            target = urljoin(current, response.headers.get('Location', ''))
-            response.close()
-            current = target
-            continue
-        response.raise_for_status()
-        content = bytearray()
-        for chunk in response.iter_content(64 * 1024):
-            content.extend(chunk)
-            if len(content) > max_bytes:
+        response = None
+        try:
+            response = requests.get(current, timeout=(4, timeout), headers=HEADERS,
+                                    stream=True, allow_redirects=False)
+            if response.status_code in (301, 302, 303, 307, 308):
+                target = urljoin(current, response.headers.get('Location', ''))
+                current = target
+                continue
+            response.raise_for_status()
+            content = bytearray()
+            size_header = response.headers.get('Content-Length', '')
+            if size_header.isdigit() and int(size_header) > max_bytes:
+                raise ValueError(f'Файл превышает лимит {max_bytes // 1024 // 1024} МБ')
+            for chunk in response.iter_content(64 * 1024):
+                if not chunk:
+                    continue
+                content.extend(chunk)
+                if len(content) > max_bytes:
+                    raise ValueError(f'Файл превышает лимит {max_bytes // 1024 // 1024} МБ')
+            return (bytes(content), response.headers.get('Content-Type', '').lower(), response.url)
+        except (requests.exceptions.RequestException, socket.gaierror, socket.timeout, OSError) as exc:
+            raise ValueError(error_for_download(exc)) from exc
+        finally:
+            if response is not None:
                 response.close()
-                raise ValueError('Файл превышает лимит 10 МБ')
-        content_type = response.headers.get('Content-Type', '').lower()
-        final_url = response.url
-        response.close()
-        return bytes(content), content_type, final_url
     raise ValueError('Слишком много перенаправлений')
 
 
@@ -286,8 +317,8 @@ def extract_date(text: str) -> str:
 
 def extract_number(text: str) -> str:
     patterns = [
-        r'(?:регистрационн(?:ый|ого)\s+номер|рег\.\s*№|сертификат\s+соответствия\s*№|декларация\s+о\s+соответствии\s*№)\s*[:№\s]*([А-ЯA-ZЁ0-9][А-ЯA-ZЁ0-9.\-/ ]{6,70})',
-        r'\b((?:ЕАЭС\s*(?:N|№)\s*)?RU\s*[СCДD][\-\s][A-ZА-Я0-9.\-/]{8,})',
+        r'(?:регистрационн(?:ый|ого)\s+номер|рег\.\s*№|сертификат\s+соответствия\s*(?:№|N[oº°]?)|декларация\s+о\s+соответствии\s*(?:№|N[oº°]?))\s*[:№\s]*([А-ЯA-ZЁ0-9][А-ЯA-ZЁ0-9.\-/ ]{6,70})',
+        r'\b((?:ЕАЭС\s*(?:N|№)\s*)?RU\s*[СCДDМM][\-\s.]?[A-ZА-Я0-9.\-/]{8,})',
     ]
     for pat in patterns:
         m = re.search(pat, text, re.I)
@@ -313,6 +344,9 @@ def extract_product(text: str) -> str:
 
 def extract_standard(text: str) -> str:
     m = re.search(r'\bГОСТ\s*(?:Р\s*)?\d{3,6}[—–-]\d{2,4}\b', text, re.I)
+    if m:
+        return tidy(m.group(0), 100)
+    m = re.search(r'\bТУ\s*(?:\d+[.\-]){2,}\d+(?:[—–-]\d{2,4})?\b', text, re.I)
     return tidy(m.group(0), 100) if m else ''
 
 
@@ -344,47 +378,46 @@ def check_supplier_and_standard(manufacturer: str, gost: str, metadata: dict):
 
 
 def assess_match(material: str, doc_text: str, title: str, pdf_read: bool):
-    """Conservative match: never call a document authentic or applicable to a batch."""
+    """Only assess PDF text; search results are NOT evidence of material conformity."""
+    if not material.strip():
+        return 'Без сопоставления', 'Не задан материал для проверки; реквизиты PDF можно просмотреть.'
+    if not pdf_read or not doc_text.strip():
+        return 'PDF не проверен', 'Текст документа не получен. Совпадение по заголовку поисковой выдачи не подтверждает материал.'
     requested_class, diameter = material_clues(material)
-    hay = (doc_text if pdf_read and doc_text else title).upper().replace('А', 'A').replace('С', 'C')
+    hay = doc_text.upper().replace('А', 'A').replace('С', 'C')
     observations = []
     conflict = False
     score = 0
-
     if requested_class:
         present = re.findall(r'(?<![A-Z0-9])A\s*(?:400|500|550|600)\s*C?(?![A-Z0-9])', hay)
         present = {re.sub(r'\s+', '', v) for v in present}
         if requested_class in present:
             score += 2
-            observations.append('Класс указан')
+            observations.append('Класс найден в тексте PDF')
         elif present:
             conflict = True
-            observations.append('Класс требуется сверить: ' + ', '.join(sorted(present)[:3]))
+            observations.append('Обнаружен другой класс: ' + ', '.join(sorted(present)[:3]))
         else:
-            observations.append('Класс не обнаружен в тексте')
-    elif material.strip() and tidy(material, 30).lower() in hay.lower():
+            observations.append('Класс в прочитанном тексте не найден')
+    elif material.strip() and tidy(material, 30).lower() in doc_text.lower():
         score += 1
-        observations.append('Название совпадает')
-
+        observations.append('Название найдено в PDF')
     if diameter:
         exact_pattern = rf'(?:[øØ⌀]|(?:\bдиаметр\b|\bd\b|\bф\b)\s*[:=]?\s*)\s*{diameter}(?!\d)|(?<!\d){diameter}\s*(?:мм|mm)\b'
         exact = re.search(exact_pattern, hay, re.I)
-        range_matches = re.findall(r'(?<!\d)(\d{1,2})\s*[-–—]\s*(\d{1,2})\s*(?:мм|MM)\b', hay, re.I)
-        in_range = any(int(a) <= diameter <= int(b) for a, b in range_matches)
+        ranges = re.findall(r'(?<!\d)(\d{1,2})\s*[-–—]\s*(\d{1,2})\s*(?:мм|MM)\b', hay, re.I)
+        in_range = any(int(a) <= diameter <= int(b) for a, b in ranges)
         if exact:
             score += 2
-            observations.append(f'Диаметр {diameter} мм указан')
+            observations.append(f'Диаметр {diameter} мм найден в PDF')
         elif in_range:
             score += 1
-            observations.append(f'Диаметр {diameter} мм входит в указанный диапазон')
+            observations.append(f'Диаметр {diameter} мм входит в диапазон, указанный в PDF')
         else:
-            observations.append(f'Диаметр {diameter} мм не подтверждён')
-
-    if not pdf_read:
-        observations.append('Текст PDF не проверен')
+            observations.append(f'Диаметр {diameter} мм в прочитанном тексте не подтверждён')
     if conflict:
         return 'Возможное расхождение', '; '.join(observations)
-    if pdf_read and score >= (3 if requested_class and diameter else 2):
+    if score >= (3 if requested_class and diameter else 2):
         return 'Совпадение признаков', '; '.join(observations)
     return 'Требует проверки', '; '.join(observations)
 
@@ -484,9 +517,10 @@ def parse_pdf_bytes(data: bytes, material: str, url: str = '', *, enable_ocr: bo
         meta = doc.metadata or {}
     finally:
         doc.close()
-    fields = extract_properties(document_text)
+    verified_text = len(document_text.strip()) >= 60
+    fields = extract_properties(document_text) if verified_text else extract_properties('')
     fields.update({
-        'pdf_read': bool(document_text.strip()),
+        'pdf_read': verified_text,
         'pdf_scanned': len('\n'.join(parts).strip()) < 80,
         'ocr_used': ocr_status == 'OCR выполнен',
         'ocr_status': ocr_status,
@@ -618,7 +652,7 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
     ranked = sorted(unique.values(), key=score_candidate, reverse=True)
     file_to_parse = [c for c in ranked if (c.get('force_pdf') or re.search(r'\.pdf(?:[?#]|$)', c['url'], re.I))][:MAX_PDFS_TO_READ]
     metadata = {}
-    with ThreadPoolExecutor(max_workers=1) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         future_map = {executor.submit(parse_pdf, c['url'], material, enable_ocr=(i == 0)): c['url']
                       for i, c in enumerate(file_to_parse)}
         for f in as_completed(future_map):
@@ -626,7 +660,7 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
             try:
                 metadata[u] = f.result()
             except Exception as exc:
-                metadata[u] = {'error': str(exc)[:180], 'pdf_read': False, 'pdf_scanned': False}
+                metadata[u] = {'error': tidy(str(exc), 260), 'pdf_read': False, 'pdf_scanned': False}
 
     result = []
     for hit in ranked:
@@ -651,6 +685,7 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
             'material_in_document': info.get('material_in_document', ''),
             'gost_in_document': info.get('gost_in_document', ''),
             'document_type': DOC_TYPES.get(detected_type, 'Не установлен'),
+            'document_type_verified': info.get('pdf_read', False) and info.get('detected_type', 'unknown') != 'unknown',
             'document_number': info.get('number', ''),
             'document_date': info.get('date', ''),
             'valid_until': info.get('valid_until', ''),
@@ -661,7 +696,8 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
             'ocr_used': info.get('ocr_used', False),
             'ocr_status': info.get('ocr_status', ''),
             'manufacturer': info.get('manufacturer', ''),
-            'url': info.get('resolved_url', url),
+            'url': url,
+            'redirect_url': info.get('resolved_url', '') if info.get('resolved_url', url) != url else '',
             'inspect_token': signer.dumps(url) if is_file else '',
             'source_page': hit['source_page'],
             'is_pdf': is_file,
@@ -670,7 +706,7 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
             'read_error': info.get('error', ''),
             'status': status,
             'explanation': explanation,
-            'source_note': ('Распознанный текст скана (OCR)' if info.get('ocr_used') else 'Текст файла PDF') if info.get('pdf_read') else 'Поисковая выдача / ссылка',
+            'source_note': ('Распознанный текст скана (OCR)' if info.get('ocr_used') else 'Текст файла PDF') if info.get('pdf_read') else 'Поисковая выдача; реквизиты PDF не подтверждены',
             'snippet': hit['snippet'],
         })
         if len(result) >= limit:
@@ -683,7 +719,7 @@ def cached_search(material, dtype, manufacturer, gost, limit):
     now = time.monotonic()
     with cache_lock:
         hit = search_cache.get(key)
-        if hit and (now - hit[0]) < SEARCH_CACHE_TTL:
+        if hit and (now - hit[0]) < (60 if any(r.get('read_error') for r in hit[1][0]) else SEARCH_CACHE_TTL):
             search_cache.move_to_end(key)
             return hit[1]
     result = perform_search(material, dtype, manufacturer, gost, limit)
@@ -754,7 +790,9 @@ def inspect_api():
     except Exception as exc:
         return jsonify({'error': f'Не удалось прочитать PDF: {str(exc)[:230]}'}), 422
     status, explanation = assess_match(material, info['text'], '', info['pdf_read'])
-    return jsonify({'metadata': response_metadata(info, status, explanation)})
+    meta = response_metadata(info, status, explanation)
+    meta['url'] = url  # Preserve signed search URL across any redirects.
+    return jsonify({'metadata': meta})
 
 
 def response_metadata(info: dict, status: str, explanation: str) -> dict:
@@ -762,6 +800,7 @@ def response_metadata(info: dict, status: str, explanation: str) -> dict:
         'material_in_document': info.get('material_in_document', ''),
         'gost_in_document': info.get('gost_in_document', ''),
         'document_type': DOC_TYPES.get(info.get('detected_type', ''), 'Не установлен'),
+        'document_type_verified': info.get('pdf_read', False) and info.get('detected_type', 'unknown') != 'unknown',
         'document_number': info.get('number', ''),
         'document_date': info.get('date', ''),
         'valid_until': info.get('valid_until', ''),
@@ -778,7 +817,7 @@ def response_metadata(info: dict, status: str, explanation: str) -> dict:
         'status': status,
         'explanation': explanation,
         'source_note': 'Распознанный текст PDF (OCR)' if info.get('ocr_used') else 'Текст PDF' if info.get('pdf_read') else 'PDF не удалось распознать',
-        'url': info.get('resolved_url', ''),
+        # URL is intentionally not replaced: signed source URL must remain stable.
     }
 
 
@@ -788,11 +827,9 @@ def upload_pdf_api():
     if not file or not file.filename:
         return jsonify({'error': 'Выберите PDF-файл.'}), 400
     material = normalize_material(request.form.get('material', ''))[:170]
-    if not material:
-        return jsonify({'error': 'Укажите материал для сопоставления.'}), 400
     data = file.stream.read(MAX_PDF_BYTES + 1)
     if len(data) > MAX_PDF_BYTES:
-        return jsonify({'error': 'PDF превышает лимит 10 МБ.'}), 413
+        return jsonify({'error': f'PDF превышает лимит {MAX_PDF_BYTES // 1024 // 1024} МБ.'}), 413
     try:
         info = run_limited_job(lambda: parse_pdf_bytes(data, material))
         if info is None:
@@ -801,7 +838,7 @@ def upload_pdf_api():
         return jsonify({'error': f'Не удалось прочитать документ: {str(exc)[:220]}'}), 422
     status, explanation = assess_match(material, info.get('text', ''), '', info['pdf_read'])
     meta = response_metadata(info, status, explanation)
-    meta.update({'title': tidy(file.filename, 170), 'source_note': meta['source_note'] + ' · локальный файл',
+    meta.update({'title': tidy(file.filename, 170), 'source_note': meta['source_note'] + ' · загружен пользователем',
                  'is_pdf': True, 'from_upload': True, 'requested_material': material,
                  'pdf_filename': tidy(file.filename, 170)})
     return jsonify({'metadata': meta})
@@ -834,6 +871,7 @@ def export():
         ('pdf_filename', 'Имя PDF-файла'),
         ('pdf_pages', 'Количество страниц PDF'),
         ('ocr_status', 'Распознавание скана'),
+        ('read_error', 'Ошибка чтения PDF'),
         ('manufacturer', 'Изготовитель'),
         ('status', 'Результат сопоставления'),
         ('explanation', 'Признаки сопоставления'),
@@ -852,7 +890,7 @@ def export():
         cell.fill = PatternFill('solid', fgColor='173455')
         cell.font = Font(name='Calibri', color='FFFFFF', bold=True)
         cell.alignment = Alignment(wrap_text=True, vertical='center')
-    for i, w in enumerate([29, 48, 25, 25, 56, 28, 18, 22, 35, 15, 28, 32, 26, 64, 25, 75, 75], 1):
+    for i, w in enumerate([29, 48, 25, 25, 56, 28, 18, 22, 35, 15, 28, 32, 32, 26, 64, 25, 75, 75], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
     for row in ws.iter_rows(min_row=2):
         for cell in row:

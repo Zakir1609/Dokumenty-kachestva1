@@ -38,7 +38,7 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(app.assess_match(m, 'Арматура А500С диаметром 18 мм', '', True)[0],
                          'Возможное расхождение')
         self.assertEqual(app.assess_match(m, '', 'Арматура А500 18 мм', False)[0],
-                         'Требует проверки')
+                         'PDF не проверен')
 
     def test_query_composition(self):
         queries = app.create_queries('Арматура А500 Ø18 мм', 'certificate', '', '')
