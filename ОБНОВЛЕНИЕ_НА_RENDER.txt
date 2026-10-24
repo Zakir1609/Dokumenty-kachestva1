@@ -1,0 +1,16 @@
+ДОКУМЕНТЫ КАЧЕСТВА 8.0 — УСТАНОВКА БЕСПЛАТНОГО RAPIDOCR
+
+1) Скачайте ZIP, распакуйте, загрузите файлы в действующий репозиторий GitHub.
+2) Удалите старый ai_extractor.py и README старой версии.
+3) Обязательно обновите Dockerfile и requirements.txt. Добавьте local_ocr.py и warm_ocr.py.
+4) В Render > Environment ключ GEMINI_API_KEY больше не нужен. Удалите его.
+5) Render > Deploys > Deploy latest commit. Тип развертывания: Docker.
+6) Сборка устанавливает RapidOCR/ONNX Runtime и проверяет русскую модель.
+   Если Docker Build падает, откройте Logs и найдите ошибку RAPIDOCR.
+7) После запуска проверьте: https://ВАШ-ДОМЕН/health
+   Ожидается version: quality-docs-v8, recognition.provider: RapidOCR.
+8) Загрузите отсканированный сертификат и сверяйте четыре поля с оригиналом.
+
+ВНИМАНИЕ: Render Free имеет 512 МБ ОЗУ. OCR может работать медленно либо
+требовать более мощный сервер. В этой среде полноценная проверка работы
+RapidOCR не проводилась; модель нельзя было скачать и запустить.

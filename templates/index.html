@@ -1,191 +1,98 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Документы качества 5.0 — проверенный поиск PDF</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Документы качества — поиск сертификатов и паспортов</title>
 <style>
-:root { --navy:#132944; --navy2:#1d3b60; --blue:#2269d0; --background:#f5f7fa; --surface:#fff; --muted:#61718a; --line:#e4eaf1; --teal:#11786c; --orange:#a56b20; --red:#ab4d47; --shadow:0 5px 24px rgba(25,54,87,.07); }
-*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--background);color:#182943;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.5}
-a{color:#1a64bd;text-decoration:none}a:hover{text-decoration:underline}
-.top{background:#132944;color:white;border-bottom:4px solid #3b80d7}
-.shell{max-width:1340px;margin:0 auto;padding:0 28px}
-.top .shell{height:76px;display:flex;align-items:center;justify-content:space-between;gap:25px}
-.brand{display:flex;align-items:center;gap:14px}.emblem{width:41px;height:41px;background:#315783;border:1px solid #567ca5;border-radius:12px;display:grid;place-items:center}
-.emblem svg{width:25px;height:25px}.brand strong{display:block;font-size:20px;font-weight:720;letter-spacing:-.5px}.brand small{display:block;font-size:11px;color:#bacde2;letter-spacing:.4px}
-.hbadge{border:1px solid #507192;color:#d9e6f4;padding:7px 12px;border-radius:7px;font-size:12px}
-main{padding:30px 0 55px}.intro{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
-h1{font-size:29px;line-height:1.25;margin:0 0 8px;font-weight:760;letter-spacing:-.8px}.intro p{margin:0;color:var(--muted);font-size:14px}
-.panel{background:white;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:25px;margin-bottom:21px}
-.panel-label{font-size:12px;letter-spacing:.075em;text-transform:uppercase;font-weight:800;color:#68819b;margin:0 0 20px}
-.form-grid{display:grid;grid-template-columns:2.2fr 1.2fr 1fr 1fr;gap:17px;align-items:end}
-.field{min-width:0}.field label{font-size:12px;font-weight:720;color:#344761;display:block;margin-bottom:8px}
-input,select{font:inherit;width:100%;height:47px;border-radius:8px;border:1px solid #cfdae6;background:#fff;color:#23344b;padding:0 13px;outline:none;transition:border .15s,box-shadow .15s}
-input:focus,select:focus{border-color:#3d85dc;box-shadow:0 0 0 3px #dcecff}input::placeholder{color:#94a2b5}
-.actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px}.btn{border:0;border-radius:8px;padding:12px 20px;background:#236acc;color:white;font-weight:730;cursor:pointer;min-height:45px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:9px}
-.btn:hover:not(:disabled){background:#1857ad}.btn:disabled{opacity:.55;cursor:default}.btn.light{color:#244663;border:1px solid #d7e2eb;background:#f7f9fc}.btn.light:hover:not(:disabled){background:#eaf2fc}
-.inline-help{font-size:12px;color:#738398}.example{font-size:12px;color:#3d668f;border:0;background:transparent;text-decoration:underline;cursor:pointer;padding:4px 0}
-.results-head{display:flex;justify-content:space-between;gap:14px;align-items:center;margin:4px 0 16px}
-.results-title{font-size:18px;font-weight:760;margin:0}.results-sub{color:var(--muted);font-size:12px;margin-top:3px}
-.tools{display:flex;gap:9px}.toolbutton{height:38px;background:#fff;color:#31516f;border:1px solid #d6e2ee;border-radius:8px;padding:0 13px;cursor:pointer;font-size:12px;font-weight:700}.toolbutton:disabled{opacity:.4;cursor:not-allowed}
-.notice{padding:13px 15px;border:1px solid #d8e4ef;background:#eff5fb;color:#3a5877;border-radius:9px;font-size:12px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start}
-.notice strong{display:block;color:#223d56;margin-bottom:2px}.notice a{font-weight:700}
-.table-wrap{background:#fff;box-shadow:var(--shadow);border:1px solid var(--line);border-radius:12px;overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:1170px}thead{background:#f0f4f8}th{text-align:left;font-size:11px;color:#5b7190;letter-spacing:.045em;text-transform:uppercase;font-weight:800;padding:15px 14px;white-space:nowrap;border-bottom:1px solid #e3eaf1}
-td{padding:16px 14px;border-bottom:1px solid #eef1f5;vertical-align:top;font-size:12.5px}tr:last-child td{border-bottom:none}
-.doc-title{font-weight:740;color:#223854;max-width:330px;line-height:1.45}.doc-sub{color:#8291a4;font-size:11px;margin-top:5px;max-width:320px;overflow-wrap:anywhere}
-.value{white-space:pre-line;max-width:240px;overflow-wrap:anywhere}.empty{color:#9cabba}.status{display:inline-block;padding:5px 9px;border-radius:7px;font-size:11px;font-weight:750;line-height:1.3;white-space:nowrap}
-.status.ok{background:#e5f5ee;color:#237457}.status.warn{background:#fff4df;color:#926621}.status.bad{background:#fdecea;color:#ae514b}
-.status-detail{margin-top:7px;color:#7c8c9e;font-size:11px;max-width:230px}
-.filetag{display:inline-block;font-size:10px;font-weight:800;border-radius:4px;background:#eaf1ff;color:#3260a1;padding:2px 5px;margin-right:4px}
-.filetag.page{background:#f0f2f5;color:#677b92}
-.oplink{display:inline-flex;align-items:center;gap:5px;font-weight:720;font-size:12px;margin:0 0 9px;white-space:nowrap}
-.small{color:#71839b;font-size:11px;max-width:200px;overflow-wrap:anywhere}
-.empty-state{padding:58px 25px;text-align:center;color:#7b8ca0}.empty-state svg{width:46px;height:46px;stroke:#a4b5c7;margin-bottom:12px}.empty-state strong{display:block;font-size:17px;color:#31445d;margin-bottom:8px}
-.loading{display:flex;align-items:center;gap:11px;background:#edf4fb;border:1px solid #d4e7f7;border-radius:9px;color:#355c83;padding:18px;font-size:13px;margin-bottom:17px}.spinner{width:18px;height:18px;border:2px solid #c6dff9;border-top-color:#1d69cc;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-.error{padding:14px 16px;background:#fff0ee;border:1px solid #f4c9c3;color:#903f36;border-radius:8px;margin-bottom:16px;white-space:pre-wrap}
-footer{border-top:1px solid #dfe5ed;color:#8290a2;font-size:12px;padding:21px 0;margin-top:30px}
-footer .shell{display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap}
-#results-region{scroll-margin-top:24px}.count{background:#e7eff8;color:#2a5c93;font-weight:760;font-size:11px;padding:5px 8px;border-radius:6px;margin-left:6px}
-.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-@media(max-width:1080px){.form-grid{grid-template-columns:1fr 1fr}.intro h1{font-size:25px}}@media(max-width:620px){.shell{padding:0 15px}.top .shell{height:74px}.brand strong{font-size:16px}.brand small{font-size:10px}.hbadge{display:none}main{padding-top:22px}.intro h1{font-size:22px}.panel{padding:18px}.form-grid{grid-template-columns:1fr}.actions{align-items:stretch;flex-direction:column}.actions .btn{width:100%}.results-head{align-items:flex-start;flex-direction:column}.tools{width:100%}.tools button{flex:1}}
-
-.upload-panel{padding:19px 25px}.upload-heading{display:flex;gap:18px;align-items:flex-start;justify-content:space-between}.upload-heading strong{font-size:15px;color:#263f59}.upload-heading p{max-width:980px;margin:5px 0 12px;font-size:12px;color:#6b7b8f}.upload-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.upload-actions input{height:auto;min-height:44px;max-width:450px;padding:10px;font-size:12px}.ocr-indicator{font-size:11px;color:#536985;background:#edf3fa;border:1px solid #d8e4f1;border-radius:8px;padding:7px 10px;white-space:nowrap}
-.ocr-indicator.ok{background:#e9f6f2;color:#166b52}.ocr-indicator.warn{background:#fff4e4;color:#916322}
-.check-btn{display:block;border:1px solid #bfdaef;background:#f4f9ff;color:#245c92;padding:7px 10px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;margin:3px 0 10px}.check-btn:hover{background:#e2f0fc}.check-btn:disabled{opacity:.45;cursor:wait}.details-btn{background:none;border:0;padding:5px 0;text-decoration:underline;color:#2367ab;font-size:11px;cursor:pointer}.download-help{padding:9px 10px;border:1px solid #f2dec1;background:#fffaf1;border-radius:7px;color:#875e25;font-size:11px;margin:6px 0 9px;max-width:240px;overflow-wrap:anywhere}.download-help.ok{border-color:#c6e8d6;background:#f0f9f3;color:#256c48}.muted-note{font-size:11px;color:#6d7b8d;margin-top:5px}.details-row td{padding:0;background:#f8fbfe;border-bottom:2px solid #d6e5f4}.details-grid{display:grid;grid-template-columns:repeat(4,minmax(155px,1fr));gap:12px;padding:18px 22px}.details-grid>div{padding:10px 12px;border-radius:6px;border:1px solid #e2eaf3;background:#fff;min-width:0}.details-grid label{font-weight:700;color:#7b89a0;font-size:10px;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px}.details-grid span{font-size:12px;color:#253c55;overflow-wrap:anywhere}.detail-heading{padding:13px 22px 0;font-weight:760;color:#36536d}.mini{font-size:11px;color:#71839b;margin-top:5px}.rec-date{font-size:12px;color:#273d56;font-weight:650}.rec-valid{font-size:11px;color:#587188;margin-top:6px}.more-status{display:inline-block;margin-top:6px;color:#8a6043;font-size:11px}
-@media(max-width:780px){.details-grid{grid-template-columns:repeat(2,minmax(130px,1fr))}.upload-heading{flex-direction:column;gap:8px}.upload-actions input{max-width:100%}}
+:root{--navy:#112f50;--blue:#2367c4;--text:#1d3552;--muted:#667c94;--line:#dbe4ef;--paper:#fff;--bg:#f3f6fa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Segoe UI,Arial,sans-serif}
+header{background:var(--navy);color:white;padding:21px 0;border-bottom:4px solid #3381d9}
+.container{max-width:1300px;margin:auto;padding:0 24px}header strong{font-size:20px}header small{display:block;color:#c0d3e7;font-size:11px;margin-top:4px;letter-spacing:.04em}
+main{padding:30px 0 45px}h1{font-size:27px;letter-spacing:-.5px;margin:0 0 18px}h2{font-size:17px;margin:0 0 18px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:23px 25px;box-shadow:0 5px 22px #18385809;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:2.2fr 1fr 1fr 1.25fr;gap:15px;align-items:end}
+.field label{display:block;font-size:12px;font-weight:700;margin-bottom:8px}input,select{width:100%;border:1px solid #cbd7e6;border-radius:8px;background:white;padding:12px 13px;color:var(--text);font:inherit;min-height:47px}
+input:focus,select:focus{outline:2px solid #a4c6ed;border-color:#397bc8}.buttons{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:19px}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:8px;border:1px solid transparent;padding:11px 19px;min-height:43px}button.primary{background:var(--blue);color:#fff}button.secondary{background:#f8fbff;color:#2b5683;border-color:#cbddec}button:disabled{cursor:wait;opacity:.6}
+.help{font-size:12px;color:var(--muted);margin-top:9px}.upload-row{display:flex;gap:15px;align-items:center;flex-wrap:wrap}.upload-row input{max-width:520px}
+#message{display:none;white-space:pre-line;border:1px solid #f1cfc7;color:#904435;background:#fff3f0;border-radius:8px;padding:12px 15px;margin:14px 0}#message.visible{display:block}
+#notice{display:none;color:#445e7e;background:#ecf4fc;border:1px solid #cfe1f5;border-radius:9px;padding:13px 15px;margin:13px 0;white-space:pre-line}#notice.visible{display:block}
+.title-row{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:30px 0 15px}.title-row h2{margin:0}.small{font-size:12px;color:var(--muted)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:#fff}table{width:100%;border-collapse:collapse;min-width:760px;table-layout:fixed}th{background:#edf3f9;text-align:left;font-size:12px;color:#536e8a;padding:15px 17px;border-bottom:1px solid var(--line)}td{padding:18px 17px;border-bottom:1px solid #e9eff6;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}tr:last-child td{border-bottom:none}th:nth-child(1){width:36%}th:nth-child(2){width:17%}th:nth-child(3){width:21%}th:nth-child(4){width:26%}
+.material{font-weight:650}a{color:#2468b9}a:hover{text-decoration:none}.docfile{display:inline-block;margin-top:10px;font-size:12px}.tag{font-size:11px;color:#6b7890;margin-top:6px}
+.empty{color:#7e8ea1}.empty-row{text-align:center;padding:36px!important;color:#72849b}.spin{display:inline-block;height:13px;width:13px;border:2px solid #aec5df;border-top-color:#215eb8;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}
+footer{padding:24px 0;border-top:1px solid var(--line);color:#6a7f95;font-size:12px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:540px){.container{padding:0 13px}.grid{grid-template-columns:1fr}.panel{padding:18px}.title-row{align-items:flex-start;flex-direction:column}.buttons>*{flex:1}h1{font-size:23px}}
 </style>
 </head>
 <body>
-<header class="top"><div class="shell"><div class="brand"><span class="emblem"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.7h7l5 5V21H7z"/><path d="M14 3v5h5"/><path d="m3 13 2 2 4-4"/><path d="M10 13h6M10 17h6"/></svg></span><span><strong>Документы качества</strong><small>ПОИСК ДОКУМЕНТОВ НА СТРОИТЕЛЬНЫЕ МАТЕРИАЛЫ</small></span></div><div class="hbadge">Онлайн-версия · 4.0</div></div></header>
-<main class="shell">
-<section class="intro"><div><h1>Поиск сертификатов, деклараций и паспортов</h1><p>Поиск открытых PDF с отображением названия, даты, номера, изготовителя, ГОСТ и сведений о файле.</p></div></section>
+<header><div class="container"><strong>▣ Документы качества</strong><small>СЕРТИФИКАТЫ · ДЕКЛАРАЦИИ · ПАСПОРТА КАЧЕСТВА</small></div></header>
+<main class="container">
+<h1>Поиск документов на строительные материалы</h1>
 <form id="search-form" class="panel">
-<div class="panel-label">Параметры поиска</div>
-<div class="form-grid">
-<div class="field"><label for="material">Наименование материала *</label><input id="material" name="material" type="text" value="Арматура А500 Ø18 мм" maxlength="170" required placeholder="Например: Арматура А500 Ø18 мм"><div class="meta"><span class="inline-help">Пример:</span><button class="example" type="button" id="example">Арматура А500 Ø18 мм</button></div></div>
-<div class="field"><label for="dtype">Тип документа</label><select id="dtype"><option value="certificate">Сертификат соответствия</option><option value="declaration">Декларация о соответствии</option><option value="passport">Паспорт качества</option><option value="test">Протокол испытаний</option><option value="refusal">Отказное письмо</option><option value="all">Все виды документов</option></select></div>
-<div class="field"><label for="manufacturer">Изготовитель (необязательно)</label><input id="manufacturer" placeholder="Например: Северсталь" maxlength="120"></div>
-<div class="field"><label for="gost">ГОСТ / ТУ (необязательно)</label><input id="gost" placeholder="Например: ГОСТ 34028-2016" maxlength="120"></div>
-</div>
-<div class="actions"><button class="btn" id="search-button" type="submit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Найти документы</button><button type="reset" class="btn light">Очистить поля</button><span class="inline-help">Ищет PDF и страницы с файлами. После поиска можно отдельно проверить любой найденный PDF. Сканам требуется OCR.</span></div>
+ <h2>Параметры поиска</h2>
+ <div class="grid">
+  <div class="field"><label for="material">Наименование материала *</label><input id="material" required maxlength="160" placeholder="Например, арматура А500С Ø18 мм"></div>
+  <div class="field"><label for="kind">Тип документа</label><select id="kind">{% for key,name in types.items() %}<option value="{{key}}">{{name}}</option>{% endfor %}</select></div>
+  <div class="field"><label for="manufacturer">Производитель (для поиска)</label><input id="manufacturer" placeholder="Например, ИКАПЛАСТ"></div>
+  <div class="field"><label for="standard">ГОСТ / ТУ (для поиска)</label><input id="standard" placeholder="Например, ГОСТ 34028-2016"></div>
+ </div>
+ <div class="buttons"><button id="search-btn" class="primary" type="submit">⌕ Найти документы</button><button class="secondary" type="reset">Очистить</button><span class="small">Отображаются только документы, которые сервер смог скачать и проверить.</span></div>
 </form>
-<section class="panel upload-panel" aria-label="Проверка загруженного PDF">
-  <div class="upload-heading"><div><strong>Уже есть PDF? Проверьте его реквизиты</strong><p>Выберите сертификат, декларацию или паспорт на компьютере. Сайт прочитает его и покажет найденные реквизиты, даже если документ не удалось найти через интернет.</p></div><span class="ocr-indicator" id="ocr-state">Проверка OCR…</span></div>
-  <div class="upload-actions"><input aria-label="Загрузить PDF" type="file" id="pdf-upload" accept="application/pdf,.pdf"><button type="button" class="btn light" id="upload-button">Проверить загруженный PDF</button></div>
-  <p class="inline-help">Файл передаётся на сервер по HTTPS для временного анализа и не сохраняется в каталоге сайта. Сервер может использовать временное хранилище. OCR до трёх страниц выполняется на сервере (файлы до 25 МБ). При сложных сканах обработка может быть длительной. Не загружайте конфиденциальные документы без разрешения.</p>
-<p class="inline-help"><b>Если найденный PDF не читается сервером:</b> нажмите «Открыть PDF» в результатах, сохраните файл на компьютер и загрузите сюда. PDF будет прочитан со стороны браузера, даже если сайт производителя блокирует сервер.</p>
+<section class="panel">
+ <h2>Проверить PDF с компьютера</h2>
+ <div class="upload-row"><input id="upload-file" type="file" accept="application/pdf,.pdf" aria-label="Выберите PDF"/><button class="secondary" type="button" id="upload-btn">Распознать документ</button></div>
+ <div class="help">Скан распознаётся на сервере бесплатной моделью RapidOCR для кириллицы; PDF не отправляется в стороннюю OCR-службу. Не загружайте конфиденциальные документы без разрешения. Размер PDF — до 25 МБ. В таблице — только четыре реквизита.</div>
+ <div id="ocr-check" class="help">Проверка локального распознавания…</div>
 </section>
-<section id="results-region">
-<div class="results-head"><div><h2 class="results-title">Результаты поиска <span class="count" id="count">0</span></h2><div class="results-sub" id="results-sub">Укажите материал и нажмите «Найти документы»</div></div><div class="tools"><button id="export-button" class="toolbutton" type="button" disabled>↓ Выгрузить в Excel</button></div></div>
-<div class="notice"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#54799e" stroke-width="2" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></svg><div><strong>Проверка достоверности обязательна</strong>Поиск в интернете не подтверждает действительность сертификата, применимость к поставленной партии и подлинность файла. Проверяйте регистрационные данные в <a href="https://pub.fsa.gov.ru/rss/certificate" target="_blank" rel="noopener noreferrer">реестре сертификатов</a> или <a href="https://pub.fsa.gov.ru/rds/declaration" target="_blank" rel="noopener noreferrer">реестре деклараций</a> Росаккредитации. Паспорт качества нужно сопоставлять с фактической партией поставки.</div></div>
-<div id="loading" class="loading" hidden><span class="spinner"></span><span>Идёт интернет-поиск, просмотр страниц производителей и чтение доступных PDF-файлов…</span></div>
-<div id="error" class="error" role="alert" hidden></div>
-<div class="table-wrap" id="table-wrap"><div class="empty-state" id="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M4 2h10l6 6v13H4zM14 2v6h6M7 13h10M7 17h8"/></svg><strong>Пока нет результатов</strong>Здесь появятся документы, найденные по вашему запросу.</div><table id="results-table" hidden><thead><tr><th style="min-width:290px">Найденный документ</th><th>Материал по PDF</th><th>Номер, дата и срок действия</th><th>Изготовитель</th><th>Соответствие материалу</th><th>Источник и файл</th></tr></thead><tbody id="tbody"></tbody></table></div>
-<p class="inline-help" style="margin:12px 2px" id="warnings"></p>
+<div id="message" role="alert"></div><div id="notice" role="status"></div>
+<section id="results">
+ <div class="title-row"><div><h2>Результаты <span id="count" class="small">0</span></h2><div class="small" id="summary">Введите материал или загрузите PDF.</div></div><button id="excel-btn" class="secondary" disabled>↓ Выгрузить Excel</button></div>
+ <div class="table-wrap"><table><thead><tr><th>Наименование материала</th><th>Номер документа</th><th>Дата документа</th><th>Производитель</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="empty-row">Документы ещё не загружены</td></tr></tbody></table></div>
 </section>
-<footer><div class="shell"><span>Сервис подбора документов для предварительного анализа. Пустые реквизиты означают, что их не удалось извлечь, а не что их нет в документе.</span><span>Сайт работает в браузере; поиск и обработка PDF выполняются на сервере.</span></div></footer>
 </main>
+<footer><div class="container">Реквизиты извлекаются автоматически и могут требовать сверки с оригиналом. Для исполнительной документации проверяйте принадлежность паспорта конкретной партии.</div></footer>
 <script>
-'use strict';
-const form=document.getElementById('search-form');
-const button=document.getElementById('search-button');
-const loading=document.getElementById('loading');
-const error=document.getElementById('error');
-const table=document.getElementById('results-table');
-const empty=document.getElementById('empty-state');
-const tbody=document.getElementById('tbody');
-const count=document.getElementById('count');
-const sub=document.getElementById('results-sub');
-const exportButton=document.getElementById('export-button');
-const warnings=document.getElementById('warnings');
-const uploadButton=document.getElementById('upload-button');
-let latest=[];
-let uploadForResult=false;
-const missing=()=>{let el=document.createElement('span');el.className='empty';el.textContent='Нет подтверждённых данных';return el};
-const textNode=s=>s?document.createTextNode(String(s)):missing();
-const div=(cls,text)=>{let el=document.createElement('div');el.className=cls;el.textContent=text||'';return el};
-const td=(row,content,cls='')=>{let el=document.createElement('td');if(cls)el.className=cls;el.append(content);row.append(el);return el};
-function secureLink(url,label){const a=document.createElement('a');a.className='oplink';a.textContent=label;a.href=(/^https?:\/\//.test(url)||url.startsWith('/api/file?'))?url:'#';a.target='_blank';a.rel='noopener noreferrer';return a}
-function fmtSize(bytes){if(!bytes)return 'Неизвестен';return bytes>=1048576?(bytes/1048576).toFixed(1)+' МБ':Math.round(bytes/1024)+' КБ'}
-const infoFields=[['read_error','Ошибка получения PDF'],['material_in_document','Материал в документе'],['document_type','Вид документа'],['document_number','Номер документа'],['document_date','Дата документа'],['valid_until','Действителен до'],['manufacturer','Изготовитель'],['gost_in_document','ГОСТ / ТУ'],['pdf_filename','Имя файла'],['pdf_pages','Страниц'],['pdf_bytes','Размер (байт)'],['pdf_title','Заголовок PDF'],['ocr_status','Распознавание'],['pdf_verified','PDF доступен и открыт сервером'],['source_note','Источник сведений']];
-function addDetails(row,item){
- const drow=document.createElement('tr');drow.className='details-row';drow.hidden=true;
- const cell=document.createElement('td');cell.colSpan=6;cell.append(div('detail-heading','Реквизиты и свойства файла'));
- const grid=document.createElement('div');grid.className='details-grid';
- for(const [key,label] of infoFields){const box=document.createElement('div');const lbl=document.createElement('label');lbl.textContent=label;const span=document.createElement('span');span.append(textNode(item[key]));box.append(lbl,span);grid.append(box)}
- cell.append(grid);drow.append(cell);row.after(drow);
- return drow;
+let results=[];
+const $=id=>document.getElementById(id);
+function setMessage(text='',danger=true){const el=$(danger?'message':'notice');el.textContent=text;el.classList.toggle('visible',Boolean(text))}
+function clearMessages(){setMessage('');setMessage('',false)}
+function addCell(tr,text){const td=document.createElement('td');td.textContent=text||'—';tr.append(td);return td}
+function draw(){
+ const tbody=$('rows');tbody.replaceChildren();$('count').textContent=results.length;$('excel-btn').disabled=!results.length;
+ if(!results.length){const r=document.createElement('tr'),td=document.createElement('td');td.className='empty-row';td.colSpan=4;td.textContent='Подходящие документы пока не найдены';r.append(td);tbody.append(r);return}
+ for(const item of results){const tr=document.createElement('tr');const first=addCell(tr,item.material||'Не удалось извлечь');first.className='material';
+  if(item.id){const a=document.createElement('a');a.className='docfile';a.href='/api/file/'+encodeURIComponent(item.id);a.target='_blank';a.rel='noopener';a.textContent='↓ Скачать PDF';first.append(document.createElement('div'),a)}
+  if(item.warning){const w=document.createElement('div');w.className='tag';w.textContent=item.warning;first.append(w)}
+  addCell(tr,item.number||'б/н');addCell(tr,item.date||'—');addCell(tr,item.manufacturer||'—');tbody.append(tr)}
 }
-function render(items){
- tbody.textContent='';table.hidden=items.length===0;empty.hidden=items.length>0;count.textContent=items.length;
- for(const item of items){
-  const tr=document.createElement('tr');
-  const first=td(tr,div('doc-title',item.title||item.pdf_filename||'Без названия'));
-  first.append(div('doc-sub',(item.document_type||'Тип не установлен')+(item.document_type_verified?' · по PDF':' · по названию ссылки')));
-  const tag=document.createElement('span');tag.className='filetag'+(item.is_pdf?'':' page');tag.textContent=item.is_pdf?'PDF':'СТРАНИЦА';first.append(tag);
-  if(item.pdf_pages)first.append(div('mini',item.pdf_pages+' стр. · '+fmtSize(item.pdf_bytes)+' · PDF проверен сервером'));
-  else if(item.pdf_filename)first.append(div('mini','Имя по ссылке: '+item.pdf_filename));
-  const p=td(tr,textNode(item.material_in_document),'value');p.append(div('small',item.gost_in_document||'ГОСТ/ТУ не извлечён'));
-  if(!item.pdf_read)p.append(div('muted-note','Реквизиты ожидают чтения PDF')); 
-  const rec=td(tr,textNode(item.document_number),'value');rec.append(div('rec-date',item.document_date||'Дата не извлечена'));if(item.valid_until)rec.append(div('rec-valid','Действителен до: '+item.valid_until));
-  td(tr,textNode(item.manufacturer),'value');
-  const status=td(tr,document.createElement('span'));const pill=status.firstElementChild;pill.className='status '+(item.status==='Совпадение признаков'?'ok':item.status==='Возможное расхождение'?'bad':'warn');pill.textContent=item.status||'Требует проверки';status.append(div('status-detail',item.explanation||''));
-  const links=td(tr,document.createElement('div'));const linkContainer=links.firstElementChild;
-  if(item.url&&item.pdf_verified&&item.inspect_token){
-    linkContainer.append(secureLink('/api/file?url='+encodeURIComponent(item.url)+'&token='+encodeURIComponent(item.inspect_token),'↓ Скачать проверенный PDF'));
-    linkContainer.append(secureLink(item.url,'↗ Оригинал PDF'));
-  }
-  if(item.source_page&&item.source_page!==item.url)linkContainer.append(secureLink(item.source_page,'↗ Страница-источник'));
-  links.append(div('small',item.pdf_read?(item.ocr_used?'Текст скана распознан':'PDF прочитан'):(item.pdf_scanned?'PDF скачан, но скан ещё не распознан':'PDF скачан, но текста нет')));
-  if(item.read_error)links.append(div('download-help',item.read_error));
-  if(!item.from_upload && item.is_pdf&&!item.pdf_read){const uploadThis=document.createElement('button');uploadThis.className='check-btn';uploadThis.type='button';uploadThis.textContent='↑ Проверить скачанный PDF';links.append(uploadThis);uploadThis.addEventListener('click',()=>{uploadForResult=true;const picker=document.getElementById('pdf-upload');picker.value='';picker.click()})}
-  const expand=document.createElement('button');expand.className='details-btn';expand.textContent='Все сведения о документе ▾';expand.type='button';links.append(expand);
-  if(item.is_pdf&&!item.from_upload){
-    const check=document.createElement('button');check.className='check-btn';check.type='button';check.textContent='↻ Повторно прочитать PDF';links.append(check);
-    check.addEventListener('click',async()=>{
-      check.disabled=true;check.textContent='Читаю PDF…';error.hidden=true;
-      try{const response=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:item.url,inspect_token:item.inspect_token,material:item.requested_material||document.getElementById('material').value})});const data=await response.json();if(!response.ok)throw Error(data.error||'Ошибка анализа');Object.assign(item,data.metadata);render(latest)}
-      catch(err){item.read_error=err.message;render(latest);error.textContent='Файл по ссылке недоступен серверу. Сохраните PDF через «Оригинал PDF» и воспользуйтесь кнопкой «Проверить скачанный PDF». '+err.message;error.hidden=false}
-    });
-  }
-  tbody.append(tr);const detailRow=addDetails(tr,item);
-  expand.addEventListener('click',()=>{detailRow.hidden=!detailRow.hidden;expand.textContent=detailRow.hidden?'Все сведения о документе ▾':'Свернуть сведения ▴'});
- }
-}
-form.addEventListener('reset',()=>setTimeout(()=>{document.getElementById('dtype').value='certificate';document.getElementById('material').value=''},0));
-document.getElementById('example').addEventListener('click',()=>{document.getElementById('material').value='Арматура А500 Ø18 мм';document.getElementById('dtype').value='certificate'});
-form.addEventListener('submit',async e=>{
- e.preventDefault();error.hidden=true;warnings.textContent='';loading.hidden=false;button.disabled=true;exportButton.disabled=true;sub.textContent='Поиск по открытым интернет-источникам…';latest=[];render([]);empty.querySelector('strong').textContent='Поиск выполняется';
- try{const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({material:document.getElementById('material').value,document_type:document.getElementById('dtype').value,manufacturer:document.getElementById('manufacturer').value,gost:document.getElementById('gost').value,limit:30})});
- const data=await response.json();if(!response.ok)throw Error(data.error||'Не удалось выполнить поиск');latest=data.results||[];render(latest);exportButton.disabled=!latest.length;
- const n=latest.filter(x=>x.pdf_read).length;sub.textContent=`Проверенных PDF: ${latest.length} · прочитан текст: ${n} · сканов без текста: ${latest.length-n}.`;
- if(latest.length>n)warnings.textContent='Для сканов без текста нажмите «Повторно прочитать PDF» или загрузите файл для анализа.';
- if(!latest.length){empty.querySelector('strong').textContent='Доступные PDF не найдены';empty.lastChild.textContent=' Недоступные ссылки отсеяны. Попробуйте изменить материал, ГОСТ, тип документа или изготовителя.'}
- if(data.warnings?.length)warnings.textContent+=' '+data.warnings.slice(0,3).join(' | ');
- }catch(err){sub.textContent='Поиск не завершён';error.textContent=err.message;error.hidden=false;empty.querySelector('strong').textContent='Поиск не выполнен'}
- finally{loading.hidden=true;button.disabled=false}
-});
-async function analyzeUploadedFile(file){
- if(!file){error.textContent='Сначала выберите PDF-файл';error.hidden=false;return}
- if(!/\.pdf$/i.test(file.name)&&file.type!=='application/pdf'){error.textContent='Выберите файл PDF.';error.hidden=false;return}
- uploadButton.disabled=true;uploadButton.textContent='Распознаю PDF…';error.hidden=true;
+$('search-form').addEventListener('submit',async e=>{
+ e.preventDefault();clearMessages();const btn=$('search-btn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>Поиск документов…';$('summary').textContent='Идёт проверка PDF-файлов. Поиск может занять время.';
  try{
-  const fd=new FormData();fd.append('file',file);fd.append('material',document.getElementById('material').value);
-  const response=await fetch('/api/upload',{method:'POST',body:fd});const data=await response.json();
-  if(!response.ok)throw Error(data.error||'Не удалось обработать PDF');
-  latest.unshift(data.metadata);render(latest);exportButton.disabled=false;
-  sub.textContent='Файл загружен и обработан. Его реквизиты показаны в первой строке.';
-  document.getElementById('results-region').scrollIntoView({behavior:'smooth'});
- }catch(err){error.textContent=err.message;error.hidden=false}
- finally{uploadButton.disabled=false;uploadButton.textContent='Проверить загруженный PDF';uploadForResult=false}
-}
-uploadButton.addEventListener('click',()=>analyzeUploadedFile(document.getElementById('pdf-upload').files[0]));
-document.getElementById('pdf-upload').addEventListener('change',e=>{
- if(uploadForResult&&e.target.files.length){analyzeUploadedFile(e.target.files[0]);}
+  const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({material:$('material').value,type:$('kind').value,manufacturer:$('manufacturer').value,standard:$('standard').value})});
+  const data=await response.json();if(!response.ok)throw new Error(data.error||'Ошибка поиска');
+  results=data.results||[];draw();$('summary').textContent=results.length?'Найдены и проверены PDF с указанными реквизитами.':'Подходящих доступных документов не найдено.';
+  if(data.warnings?.length)setMessage(data.warnings.join('\n'),false);
+ }catch(err){setMessage(err.message);$('summary').textContent='Ошибка поиска.'}
+ finally{btn.disabled=false;btn.textContent='⌕ Найти документы'}
 });
-(async()=>{try{const r=await fetch('/api/ocr-status');const d=await r.json();const s=document.getElementById('ocr-state');s.textContent=d.ready?'✓ OCR сканов доступен':'OCR сканов: '+d.message;s.className='ocr-indicator '+(d.ready?'ok':'warn')}catch(_){document.getElementById('ocr-state').textContent='OCR: проверка недоступна'}})();
-exportButton.addEventListener('click',async()=>{if(!latest.length)return;exportButton.disabled=true;try{const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({results:latest})});if(!r.ok)throw Error('Не удалось создать Excel');const blob=await r.blob(),url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='dokumenty_kachestva.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}catch(err){error.textContent=err.message;error.hidden=false}finally{exportButton.disabled=false}});
+$('upload-btn').addEventListener('click',async()=>{
+ const file=$('upload-file').files[0];clearMessages();if(!file){setMessage('Выберите PDF-файл.');return}
+ const btn=$('upload-btn');btn.disabled=true;btn.textContent='Распознавание PDF…';
+ try{const fd=new FormData();fd.append('file',file);fd.append('material',$('material').value);
+ const response=await fetch('/api/upload',{method:'POST',body:fd});const data=await response.json();if(!response.ok)throw new Error(data.error||'Ошибка анализа');
+ results.unshift(data.result);draw();$('summary').textContent='Загруженный файл проанализирован и добавлен в таблицу.';
+ if(data.result.ocr_note&&!data.result.has_text)setMessage('Распознавание не подтверждено: '+data.result.ocr_note,false);
+ else if(data.result.warning)setMessage(data.result.warning,false);
+ }catch(err){setMessage(err.message)}finally{btn.disabled=false;btn.textContent='Распознать документ'}
+});
+$('search-form').addEventListener('reset',()=>{clearMessages()});
+$('excel-btn').addEventListener('click',async()=>{
+ const btn=$('excel-btn');btn.disabled=true;try{const response=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({results})});if(!response.ok)throw new Error('Не удалось подготовить Excel');
+ const blob=await response.blob(),url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='dokumenty_kachestva.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+ }catch(err){setMessage(err.message)}finally{btn.disabled=false}
+});
+fetch('/health').then(r=>r.json()).then(data=>{$('ocr-check').textContent=data.recognition?.ready?'✓ RapidOCR запущен: кириллическая модель загружена.':data.recognition?.configured?'✓ Бесплатный RapidOCR установлен. При первом скане модель инициализируется.':'⚠ RapidOCR не установлен на сервере. Проверьте Docker-сборку.'}).catch(()=>{$('ocr-check').textContent='Не удалось проверить настройку распознавания'});
 </script>
 </body>
 </html>
