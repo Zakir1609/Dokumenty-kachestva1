@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Документы качества — поиск сертификатов, деклараций и паспортов</title>
+<title>Документы качества 5.0 — проверенный поиск PDF</title>
 <style>
 :root { --navy:#132944; --navy2:#1d3b60; --blue:#2269d0; --background:#f5f7fa; --surface:#fff; --muted:#61718a; --line:#e4eaf1; --teal:#11786c; --orange:#a56b20; --red:#ab4d47; --shadow:0 5px 24px rgba(25,54,87,.07); }
 *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--background);color:#182943;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.5}
@@ -73,7 +73,7 @@ footer .shell{display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap
 <section class="panel upload-panel" aria-label="Проверка загруженного PDF">
   <div class="upload-heading"><div><strong>Уже есть PDF? Проверьте его реквизиты</strong><p>Выберите сертификат, декларацию или паспорт на компьютере. Сайт прочитает его и покажет найденные реквизиты, даже если документ не удалось найти через интернет.</p></div><span class="ocr-indicator" id="ocr-state">Проверка OCR…</span></div>
   <div class="upload-actions"><input aria-label="Загрузить PDF" type="file" id="pdf-upload" accept="application/pdf,.pdf"><button type="button" class="btn light" id="upload-button">Проверить загруженный PDF</button></div>
-  <p class="inline-help">Файл передаётся на сервер по HTTPS для временного анализа и не сохраняется в каталоге сайта. Сервер может использовать временное хранилище. OCR первых трёх страниц доступен на сервере (до 25 МБ). Не загружайте конфиденциальные документы без разрешения.</p>
+  <p class="inline-help">Файл передаётся на сервер по HTTPS для временного анализа и не сохраняется в каталоге сайта. Сервер может использовать временное хранилище. OCR до трёх страниц выполняется на сервере (файлы до 25 МБ). При сложных сканах обработка может быть длительной. Не загружайте конфиденциальные документы без разрешения.</p>
 <p class="inline-help"><b>Если найденный PDF не читается сервером:</b> нажмите «Открыть PDF» в результатах, сохраните файл на компьютер и загрузите сюда. PDF будет прочитан со стороны браузера, даже если сайт производителя блокирует сервер.</p>
 </section>
 <section id="results-region">
@@ -106,9 +106,9 @@ const missing=()=>{let el=document.createElement('span');el.className='empty';el
 const textNode=s=>s?document.createTextNode(String(s)):missing();
 const div=(cls,text)=>{let el=document.createElement('div');el.className=cls;el.textContent=text||'';return el};
 const td=(row,content,cls='')=>{let el=document.createElement('td');if(cls)el.className=cls;el.append(content);row.append(el);return el};
-function secureLink(url,label){const a=document.createElement('a');a.className='oplink';a.textContent=label;a.href=/^https?:\/\//.test(url)?url:'#';a.target='_blank';a.rel='noopener noreferrer';return a}
+function secureLink(url,label){const a=document.createElement('a');a.className='oplink';a.textContent=label;a.href=(/^https?:\/\//.test(url)||url.startsWith('/api/file?'))?url:'#';a.target='_blank';a.rel='noopener noreferrer';return a}
 function fmtSize(bytes){if(!bytes)return 'Неизвестен';return bytes>=1048576?(bytes/1048576).toFixed(1)+' МБ':Math.round(bytes/1024)+' КБ'}
-const infoFields=[['read_error','Ошибка получения PDF'],['material_in_document','Материал в документе'],['document_type','Вид документа'],['document_number','Номер документа'],['document_date','Дата документа'],['valid_until','Действителен до'],['manufacturer','Изготовитель'],['gost_in_document','ГОСТ / ТУ'],['pdf_filename','Имя файла'],['pdf_pages','Страниц'],['pdf_bytes','Размер (байт)'],['pdf_title','Заголовок PDF'],['ocr_status','Распознавание'],['source_note','Источник сведений']];
+const infoFields=[['read_error','Ошибка получения PDF'],['material_in_document','Материал в документе'],['document_type','Вид документа'],['document_number','Номер документа'],['document_date','Дата документа'],['valid_until','Действителен до'],['manufacturer','Изготовитель'],['gost_in_document','ГОСТ / ТУ'],['pdf_filename','Имя файла'],['pdf_pages','Страниц'],['pdf_bytes','Размер (байт)'],['pdf_title','Заголовок PDF'],['ocr_status','Распознавание'],['pdf_verified','PDF доступен и открыт сервером'],['source_note','Источник сведений']];
 function addDetails(row,item){
  const drow=document.createElement('tr');drow.className='details-row';drow.hidden=true;
  const cell=document.createElement('td');cell.colSpan=6;cell.append(div('detail-heading','Реквизиты и свойства файла'));
@@ -124,7 +124,7 @@ function render(items){
   const first=td(tr,div('doc-title',item.title||item.pdf_filename||'Без названия'));
   first.append(div('doc-sub',(item.document_type||'Тип не установлен')+(item.document_type_verified?' · по PDF':' · по названию ссылки')));
   const tag=document.createElement('span');tag.className='filetag'+(item.is_pdf?'':' page');tag.textContent=item.is_pdf?'PDF':'СТРАНИЦА';first.append(tag);
-  if(item.pdf_pages)first.append(div('mini',item.pdf_pages+' стр. · '+fmtSize(item.pdf_bytes)));
+  if(item.pdf_pages)first.append(div('mini',item.pdf_pages+' стр. · '+fmtSize(item.pdf_bytes)+' · PDF проверен сервером'));
   else if(item.pdf_filename)first.append(div('mini','Имя по ссылке: '+item.pdf_filename));
   const p=td(tr,textNode(item.material_in_document),'value');p.append(div('small',item.gost_in_document||'ГОСТ/ТУ не извлечён'));
   if(!item.pdf_read)p.append(div('muted-note','Реквизиты ожидают чтения PDF')); 
@@ -132,18 +132,21 @@ function render(items){
   td(tr,textNode(item.manufacturer),'value');
   const status=td(tr,document.createElement('span'));const pill=status.firstElementChild;pill.className='status '+(item.status==='Совпадение признаков'?'ok':item.status==='Возможное расхождение'?'bad':'warn');pill.textContent=item.status||'Требует проверки';status.append(div('status-detail',item.explanation||''));
   const links=td(tr,document.createElement('div'));const linkContainer=links.firstElementChild;
-  if(item.url)linkContainer.append(secureLink(item.url,item.is_pdf?'↗ Открыть PDF':'↗ Открыть страницу'));
-  if(item.source_page&&item.source_page!==item.url)linkContainer.append(secureLink(item.source_page,'↗ Источник'));
-  links.append(div('small',item.pdf_read?(item.ocr_used?'Реквизиты получены из OCR скана':'Реквизиты получены из PDF'):(item.pdf_scanned?'Скан: текст не распознан':item.read_error?'Сервер не смог скачать PDF':'Текст PDF не прочитан')));
+  if(item.url&&item.pdf_verified&&item.inspect_token){
+    linkContainer.append(secureLink('/api/file?url='+encodeURIComponent(item.url)+'&token='+encodeURIComponent(item.inspect_token),'↓ Скачать проверенный PDF'));
+    linkContainer.append(secureLink(item.url,'↗ Оригинал PDF'));
+  }
+  if(item.source_page&&item.source_page!==item.url)linkContainer.append(secureLink(item.source_page,'↗ Страница-источник'));
+  links.append(div('small',item.pdf_read?(item.ocr_used?'Текст скана распознан':'PDF прочитан'):(item.pdf_scanned?'PDF скачан, но скан ещё не распознан':'PDF скачан, но текста нет')));
   if(item.read_error)links.append(div('download-help',item.read_error));
-  if(item.is_pdf&&!item.pdf_read){const uploadThis=document.createElement('button');uploadThis.className='check-btn';uploadThis.type='button';uploadThis.textContent='↑ Проверить скачанный PDF';links.append(uploadThis);uploadThis.addEventListener('click',()=>{uploadForResult=true;const picker=document.getElementById('pdf-upload');picker.value='';picker.click()})}
+  if(!item.from_upload && item.is_pdf&&!item.pdf_read){const uploadThis=document.createElement('button');uploadThis.className='check-btn';uploadThis.type='button';uploadThis.textContent='↑ Проверить скачанный PDF';links.append(uploadThis);uploadThis.addEventListener('click',()=>{uploadForResult=true;const picker=document.getElementById('pdf-upload');picker.value='';picker.click()})}
   const expand=document.createElement('button');expand.className='details-btn';expand.textContent='Все сведения о документе ▾';expand.type='button';links.append(expand);
   if(item.is_pdf&&!item.from_upload){
     const check=document.createElement('button');check.className='check-btn';check.type='button';check.textContent='↻ Повторно прочитать PDF';links.append(check);
     check.addEventListener('click',async()=>{
       check.disabled=true;check.textContent='Читаю PDF…';error.hidden=true;
       try{const response=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:item.url,inspect_token:item.inspect_token,material:item.requested_material||document.getElementById('material').value})});const data=await response.json();if(!response.ok)throw Error(data.error||'Ошибка анализа');Object.assign(item,data.metadata);render(latest)}
-      catch(err){item.read_error=err.message;render(latest);error.textContent='Файл по ссылке недоступен серверу. Сохраните PDF через «Открыть PDF» и воспользуйтесь кнопкой «Проверить скачанный PDF». '+err.message;error.hidden=false}
+      catch(err){item.read_error=err.message;render(latest);error.textContent='Файл по ссылке недоступен серверу. Сохраните PDF через «Оригинал PDF» и воспользуйтесь кнопкой «Проверить скачанный PDF». '+err.message;error.hidden=false}
     });
   }
   tbody.append(tr);const detailRow=addDetails(tr,item);
@@ -156,10 +159,10 @@ form.addEventListener('submit',async e=>{
  e.preventDefault();error.hidden=true;warnings.textContent='';loading.hidden=false;button.disabled=true;exportButton.disabled=true;sub.textContent='Поиск по открытым интернет-источникам…';latest=[];render([]);empty.querySelector('strong').textContent='Поиск выполняется';
  try{const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({material:document.getElementById('material').value,document_type:document.getElementById('dtype').value,manufacturer:document.getElementById('manufacturer').value,gost:document.getElementById('gost').value,limit:30})});
  const data=await response.json();if(!response.ok)throw Error(data.error||'Не удалось выполнить поиск');latest=data.results||[];render(latest);exportButton.disabled=!latest.length;
- const n=latest.filter(x=>x.pdf_read).length;const blocked=latest.filter(x=>x.read_error).length;sub.textContent=`Найдено ${latest.length} ссылок · текст получен из ${n} PDF · недоступны для чтения: ${blocked}.`;
- if(blocked)warnings.textContent='Некоторые сайты запрещают скачивать файлы с серверов. Для них откройте PDF в браузере, сохраните и загрузите в блок проверки PDF выше.';
- if(!latest.length){empty.querySelector('strong').textContent='Подходящие ссылки не найдены';empty.lastChild.textContent=' Попробуйте уточнить материал, ГОСТ или изготовителя.'}
- if(data.warnings?.length)warnings.textContent+=' Некоторые поисковые запросы не выполнены: '+data.warnings.slice(0,2).join(' | ');
+ const n=latest.filter(x=>x.pdf_read).length;sub.textContent=`Проверенных PDF: ${latest.length} · прочитан текст: ${n} · сканов без текста: ${latest.length-n}.`;
+ if(latest.length>n)warnings.textContent='Для сканов без текста нажмите «Повторно прочитать PDF» или загрузите файл для анализа.';
+ if(!latest.length){empty.querySelector('strong').textContent='Доступные PDF не найдены';empty.lastChild.textContent=' Недоступные ссылки отсеяны. Попробуйте изменить материал, ГОСТ, тип документа или изготовителя.'}
+ if(data.warnings?.length)warnings.textContent+=' '+data.warnings.slice(0,3).join(' | ');
  }catch(err){sub.textContent='Поиск не завершён';error.textContent=err.message;error.hidden=false;empty.querySelector('strong').textContent='Поиск не выполнен'}
  finally{loading.hidden=true;button.disabled=false}
 });

@@ -15,6 +15,7 @@ from threading import Lock, BoundedSemaphore
 import shutil
 import ipaddress
 import logging
+import math
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -78,10 +79,12 @@ HEADERS = {
 MAX_PDF_BYTES = 25 * 1024 * 1024
 PDF_PREVIEW_PAGES = 6
 MAX_OCR_PAGES = 3
-MAX_SEARCH_QUERIES = 5
-MAX_SEARCH_RESULTS = 28
-MAX_PDFS_TO_READ = 5
-MAX_HTML_PAGES_TO_EXPAND = 5
+OCR_PAGE_TIMEOUT = int(os.environ.get("OCR_PAGE_TIMEOUT", "75"))
+OCR_DPI = int(os.environ.get("OCR_DPI", "170"))
+MAX_SEARCH_QUERIES = 4
+MAX_SEARCH_RESULTS = 36
+MAX_PDFS_TO_READ = 16
+MAX_HTML_PAGES_TO_EXPAND = 8
 
 
 @app.before_request
@@ -97,8 +100,8 @@ def security_and_limits():
             })
 
     policy = {'/api/search': 9, '/api/inspect': 15,
-              '/api/upload': 15, '/api/export': 30}
-    if request.method != 'POST' or request.path not in policy:
+              '/api/upload': 15, '/api/export': 30, '/api/file': 20}
+    if request.path not in policy or (request.method != 'POST' and not (request.path == '/api/file' and request.method == 'GET')):
         return None
     key = (request.remote_addr or 'unknown', request.path)
     now = time.monotonic()
@@ -127,7 +130,7 @@ def set_security_headers(response):
 
 @app.route('/health')
 def health():
-    return jsonify({'ok': True, 'service': 'quality-docs-online'})
+    return jsonify({'ok': True, 'service': 'quality-docs-online-v5', 'ocr': tesseract_status()})
 
 
 def assert_public_dns(url: str):
@@ -296,7 +299,7 @@ def extract_manufacturer(text: str) -> str:
 def extract_date(text: str) -> str:
     """Find the issue/registration date. Never substitute PDF creation date."""
     patterns = [
-        r'(?:дата\s+(?:выдачи|регистрации|оформления|составления|изготовления|выпуска)|выдан(?:а|о)?|зарегистрирован[ао]?|выдано\s+от)\s*[:№—–-]?\s*(\d{1,2}[./]\d{1,2}[./]\d{4})',
+        r'(?:дата\s+(?:выдачи|регистрации|оформления|составления|изготовления|выпуска|документа)|выдан(?:а|о)?|зарегистрирован[ао]?|выдано\s+от|дата\s+начала\s+действия)\s*[:№—–-]?\s*(\d{1,2}[./]\d{1,2}[./]\d{4})',
         r'(?:дата\s+(?:выдачи|регистрации|составления)|выдан(?:а|о)?)\s*[:—–-]?\s*(\d{1,2}\s+[А-Яа-я]+\s+20\d{2}\s*(?:г\.)?)',
         r'(?:срок\s+действия\s*[:—–-]?\s*)?с\s*(\d{1,2}[./]\d{1,2}[./]\d{4})\s*(?:г\.?\s*)?по\s*\d{1,2}[./]\d{1,2}[./]\d{4}',
     ]
@@ -317,7 +320,8 @@ def extract_date(text: str) -> str:
 
 def extract_number(text: str) -> str:
     patterns = [
-        r'(?:регистрационн(?:ый|ого)\s+номер|рег\.\s*№|сертификат\s+соответствия\s*(?:№|N[oº°]?)|декларация\s+о\s+соответствии\s*(?:№|N[oº°]?))\s*[:№\s]*([А-ЯA-ZЁ0-9][А-ЯA-ZЁ0-9.\-/ ]{6,70})',
+        r'(?:паспорт(?:\s+качества)?\s*(?:№|N[oº°]?)|протокол\s+испытаний\s*(?:№|N[oº°]?))\s*[:№\s]*([A-ZА-ЯЁ0-9][A-ZА-ЯЁ0-9.\-/]{2,70})',
+        r'(?:регистрационн(?:ый|ого)\s+(?:номер|№)|рег\.\s*№|сертификат\s+соответствия\s*(?:№|N[oº°]?)|декларация\s+о\s+соответствии\s*(?:№|N[oº°]?))\s*[:№\s]*([А-ЯA-ZЁ0-9][А-ЯA-ZЁ0-9.\-/ ]{6,70})',
         r'\b((?:ЕАЭС\s*(?:N|№)\s*)?RU\s*[СCДDМM][\-\s.]?[A-ZА-Я0-9.\-/]{8,})',
     ]
     for pat in patterns:
@@ -425,7 +429,7 @@ def assess_match(material: str, doc_text: str, title: str, pdf_read: bool):
 
 @lru_cache(maxsize=1)
 def tesseract_status() -> dict:
-    """Optional local OCR; never sends PDF to an external OCR service."""
+    """Report actual OCR availability; test the executable rather than only its presence."""
     try:
         import pytesseract
         path = shutil.which('tesseract')
@@ -434,26 +438,69 @@ def tesseract_status() -> dict:
             if os.path.isfile(p):
                 path = p
         if not path:
-            return {'ready': False, 'message': 'Tesseract OCR не установлен'}
+            return {'ready': False, 'message': 'Не установлен Tesseract OCR на сервере'}
         pytesseract.pytesseract.tesseract_cmd = path
         langs = pytesseract.get_languages(config='')
-        return {'ready': 'rus' in langs, 'message': ('Русский OCR готов' if 'rus' in langs else 'Не установлен языковой пакет rus'), 'languages': langs}
+        if 'rus' not in langs:
+            return {'ready': False, 'message': 'Отсутствует пакет русского языка rus', 'languages': langs}
+        # Verify that the binary can actually read a generated sample, not only
+        # that the language pack is listed by Tesseract.
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.new('L', (500, 120), 'white')
+        drawer = ImageDraw.Draw(img)
+        drawer.text((14, 24), 'TEST 123', font=ImageFont.load_default(32), fill='black')
+        check = pytesseract.image_to_string(img, lang='rus+eng', config='--psm 6', timeout=15)
+        if 'TEST' not in check.upper() and '123' not in check:
+            return {'ready': False, 'message': 'OCR запущен, но не распознал контрольное изображение', 'languages': langs}
+        return {'ready': True, 'message': 'Русский OCR готов · самопроверка пройдена', 'languages': langs}
     except Exception as exc:
-        return {'ready': False, 'message': f'OCR недоступен: {type(exc).__name__}'}
+        log.exception('OCR startup error')
+        return {'ready': False, 'message': f'Ошибка запуска OCR: {type(exc).__name__}: {tidy(str(exc), 180)}'}
 
 
-def ocr_pdf(doc, pages: int = MAX_OCR_PAGES) -> str:
-    if not tesseract_status()['ready']:
-        return ''
+def ocr_error_message(exc: Exception) -> str:
     import pytesseract
-    from PIL import Image
+    if isinstance(exc, RuntimeError) and 'timeout' in str(exc).lower():
+        return f'Превышено время OCR ({OCR_PAGE_TIMEOUT} с на страницу). Скан слишком сложный или сервер перегружен.'
+    if isinstance(exc, pytesseract.TesseractError):
+        return 'Ошибка Tesseract: ' + tidy(str(exc), 220)
+    return type(exc).__name__ + ': ' + tidy(str(exc), 200)
+
+
+def ocr_pdf(doc, pages: int = MAX_OCR_PAGES) -> tuple[str, list[str]]:
+    """OCR raster pages at readable DPI. Fallback to layout mode for sparse scans."""
+    if not tesseract_status()['ready']:
+        return '', [tesseract_status()['message']]
+    import pytesseract
+    from PIL import Image, ImageOps
     found = []
+    errors = []
     for i in range(min(pages, len(doc))):
-        page = doc.load_page(i)
-        pix = page.get_pixmap(matrix=fitz.Matrix(1.25, 1.25), colorspace=fitz.csGRAY, alpha=False)
-        img = Image.frombytes('L', (pix.width, pix.height), pix.samples)
-        found.append(pytesseract.image_to_string(img, lang='rus+eng', config='--psm 3', timeout=12))
-    return '\n'.join(found)
+        try:
+            page = doc.load_page(i)
+            zoom = max(1.4, min(2.5, OCR_DPI / 72.0))
+            pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), colorspace=fitz.csGRAY, alpha=False)
+            # Guard against huge image memory usage on small hosting instances.
+            if pix.width * pix.height > 9_000_000:
+                factor = math.sqrt(9_000_000 / (pix.width * pix.height))
+                pix = page.get_pixmap(matrix=fitz.Matrix(zoom * factor, zoom * factor), colorspace=fitz.csGRAY, alpha=False)
+            with Image.open(io.BytesIO(pix.tobytes('png'))) as loaded:
+                img = loaded.convert('L')
+                img = ImageOps.autocontrast(img, cutoff=1)
+                recognized = pytesseract.image_to_string(img, lang='rus+eng', config='--oem 1 --psm 3', timeout=OCR_PAGE_TIMEOUT)
+                if len(recognized.strip()) < 35:
+                    try:
+                        other = pytesseract.image_to_string(img, lang='rus+eng', config='--oem 1 --psm 6', timeout=OCR_PAGE_TIMEOUT)
+                        if len(other.strip()) > len(recognized.strip()):
+                            recognized = other
+                    except Exception as exc:
+                        log.warning('OCR fallback page %d: %s', i + 1, ocr_error_message(exc))
+                found.append(recognized)
+        except Exception as exc:
+            message = f'Стр. {i + 1}: {ocr_error_message(exc)}'
+            errors.append(message)
+            log.warning('OCR page failed: %s', message)
+    return '\n'.join(found), errors
 
 
 def extract_valid_until(text: str) -> str:
@@ -494,35 +541,48 @@ def extract_properties(text: str) -> dict:
     }
 
 def parse_pdf_bytes(data: bytes, material: str, url: str = '', *, enable_ocr: bool = True) -> dict:
-    if not data[:5] == b'%PDF-':
+    if not data[:1024].lstrip().startswith(b'%PDF-'):
         raise ValueError('Полученные данные не являются PDF-файлом')
     doc = fitz.open(stream=data, filetype='pdf')
     try:
         if len(doc) > 200:
-            raise ValueError('PDF содержит более 200 страниц, файл слишком объёмный для онлайн-проверки')
+            raise ValueError('PDF содержит более 200 страниц')
+        if doc.is_encrypted and not doc.authenticate(''):
+            raise ValueError('PDF защищён паролем')
         page_count = len(doc)
         parts = [doc.load_page(i).get_text('text', sort=True) for i in range(min(PDF_PREVIEW_PAGES, page_count))]
-        document_text = '\n'.join(parts)[:130_000]
+        extracted = '\n'.join(parts)[:130_000]
+        document_text = extracted
+        ocr_errors = []
         ocr_status = ''
-        if len(document_text.strip()) < 80 and enable_ocr:
+        scanned = len(extracted.strip()) < 90
+        # Text layers may be incomplete: scan pages if text doesn't contain any
+        # verifiable document fields AND the text layer is very short.
+        if (scanned or (len(extracted.strip()) < 350 and not any(v for k, v in extract_properties(extracted).items() if k != 'detected_type'))) and enable_ocr:
             status = tesseract_status()
             if status['ready']:
-                try:
-                    document_text = ocr_pdf(doc)[:130_000]
-                    ocr_status = 'OCR выполнен' if document_text.strip() else 'OCR не обнаружил читаемого текста'
-                except Exception as exc:
-                    ocr_status = f'Ошибка OCR: {type(exc).__name__}'
+                recognized, ocr_errors = ocr_pdf(doc)
+                if recognized.strip():
+                    document_text = (extracted + '\n' + recognized if extracted else recognized)[:130_000]
+                    ocr_status = 'OCR выполнен' + (f' с предупреждениями: {"; ".join(ocr_errors)[:150]}' if ocr_errors else '')
+                elif ocr_errors:
+                    ocr_status = 'Ошибка OCR: ' + '; '.join(ocr_errors)[:270]
+                else:
+                    ocr_status = 'OCR завершён, но читаемый текст не обнаружен'
             else:
                 ocr_status = status['message']
+        elif scanned:
+            ocr_status = 'PDF является сканом: для чтения необходимо OCR'
         meta = doc.metadata or {}
     finally:
         doc.close()
-    verified_text = len(document_text.strip()) >= 60
-    fields = extract_properties(document_text) if verified_text else extract_properties('')
+    # A short but meaningful document can contain valid fields: don't mark it unread.
+    fields = extract_properties(document_text)
+    verified_text = len(document_text.strip()) >= 35
     fields.update({
         'pdf_read': verified_text,
-        'pdf_scanned': len('\n'.join(parts).strip()) < 80,
-        'ocr_used': ocr_status == 'OCR выполнен',
+        'pdf_scanned': scanned,
+        'ocr_used': bool(ocr_status.startswith('OCR выполнен')),
         'ocr_status': ocr_status,
         'pdf_pages': page_count,
         'pdf_bytes': len(data),
@@ -530,13 +590,14 @@ def parse_pdf_bytes(data: bytes, material: str, url: str = '', *, enable_ocr: bo
         'pdf_filename': extract_pdf_filename(url),
         'text': document_text,
         'resolved_url': url,
+        'pdf_verified': True,
     })
     return fields
 
 
 def parse_pdf(url: str, material: str, *, enable_ocr: bool = True):
     data, content_type, resolved_url = safe_request(url)
-    if not (data[:5] == b'%PDF-' or 'application/pdf' in content_type):
+    if not data[:1024].lstrip().startswith(b'%PDF-'):
         raise ValueError('По ссылке находится веб-страница или другой тип файла, а не PDF')
     return parse_pdf_bytes(data, material, resolved_url, enable_ocr=enable_ocr)
 
@@ -547,7 +608,7 @@ def expand_page(url: str, desired_type: str, material: str) -> list[dict]:
         data, kind, landing = safe_request(url, max_bytes=1_400_000, timeout=7)
         if 'pdf' in kind or data[:5] == b'%PDF-':
             return [{'url': landing, 'title': 'PDF-документ', 'snippet': material,
-                     'source_page': url, 'priority': 30, 'force_pdf': True}]
+                     'source_page': url, 'source_verified': True, 'priority': 30, 'force_pdf': True}]
         if 'html' not in kind and not data.lstrip()[:1] == b'<':
             return []
         soup = BeautifulSoup(data, 'html.parser')
@@ -566,7 +627,7 @@ def expand_page(url: str, desired_type: str, material: str) -> list[dict]:
             score = sum(x.lower() in (anchor + ' ' + parent + ' ' + link).lower() for x in ('сертификат', 'паспорт', 'декларация', 'испытани', 'арматур'))
             score += 2 if re.search(r'500|34028', parent, re.I) and re.search(r'500|34028', material, re.I) else 0
             link_items.append({'url': link, 'title': anchor or 'PDF-документ', 'snippet': parent,
-                               'source_page': landing, 'priority': score})
+                               'source_page': landing, 'source_verified': True, 'priority': score})
             if count >= 70:
                 break
         return sorted(link_items, key=lambda x: x['priority'], reverse=True)[:8]
@@ -623,6 +684,8 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
             except Exception as exc:
                 log.debug('Expanding candidate failed: %s', exc)
 
+    # Only PDFs proven accessible from this server go into public results.
+    # A search hit is not a working document, even when its URL ends in ".pdf".
     combined = file_candidates + landing_candidates
     unique = {}
     for x in combined:
@@ -632,8 +695,8 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
 
     def score_candidate(c):
         info = (c['title'] + ' ' + c['snippet'] + ' ' + c['url']).lower()
-        is_pdf = bool((c.get('force_pdf') or re.search(r'\.pdf(?:[?#]|$)', c['url'], re.I)))
-        score = (25 if is_pdf else 0) + c.get('priority', 0)
+        is_pdf_hint = bool(c.get('force_pdf') or re.search(r'\.pdf(?:[?#]|$)', c['url'], re.I))
+        score = (25 if is_pdf_hint else 0) + c.get('priority', 0)
         if dtype != 'all' and guess_type(info) == dtype:
             score += 15
         if manufacturer and manufacturer.lower() in info:
@@ -641,72 +704,110 @@ def perform_search(material: str, dtype: str, manufacturer: str, gost: str, limi
         if gost and gost.lower() in info:
             score += 8
         class_code, dia = material_clues(material)
-        if class_code:
-            class_norm = info.upper().replace('А', 'A').replace('С', 'C')
-            if class_code in class_norm:
-                score += 6
+        if class_code and class_code in info.upper().replace('А', 'A').replace('С', 'C'):
+            score += 6
         if dia and re.search(rf'(?<!\d){dia}\s*(?:мм|mm|[Øø])?', info, re.I):
             score += 3
         return score
 
     ranked = sorted(unique.values(), key=score_candidate, reverse=True)
-    file_to_parse = [c for c in ranked if (c.get('force_pdf') or re.search(r'\.pdf(?:[?#]|$)', c['url'], re.I))][:MAX_PDFS_TO_READ]
-    metadata = {}
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        future_map = {executor.submit(parse_pdf, c['url'], material, enable_ocr=(i == 0)): c['url']
-                      for i, c in enumerate(file_to_parse)}
+    # Probe PDF-like links first; also accept a small number of direct download URLs.
+    direct = [c for c in ranked if (c.get('force_pdf') or re.search(r'\.pdf(?:[?#]|$)', c['url'], re.I))]
+    other = [c for c in ranked if c not in direct]
+    to_verify = (direct + other[:5])[:MAX_PDFS_TO_READ]
+    validated = {}
+    discarded = 0
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_map = {
+            executor.submit(parse_pdf, c['url'], material, enable_ocr=False): c
+            for i, c in enumerate(to_verify)
+        }
         for f in as_completed(future_map):
-            u = future_map[f]
+            candidate = future_map[f]
             try:
-                metadata[u] = f.result()
+                info = f.result()
+                # PyMuPDF must have opened the real PDF, not just HTTP 200.
+                if not info.get('pdf_verified') or not info.get('pdf_pages'):
+                    discarded += 1
+                    continue
+                validated[candidate['url']] = info
             except Exception as exc:
-                metadata[u] = {'error': tidy(str(exc), 260), 'pdf_read': False, 'pdf_scanned': False}
+                discarded += 1
+                log.info('PDF discarded (%s): %s', urlsplit(candidate['url']).hostname, tidy(str(exc), 150))
+    # After validating links, OCR the first three actually accessible scans.
+    # No OCR time is spent on dead URLs, HTML responses or damaged PDFs.
+    scan_candidates = [c for c in to_verify if c['url'] in validated and
+                       validated[c['url']].get('pdf_scanned', False)][:3]
+    if scan_candidates:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            ocr_futures = {executor.submit(parse_pdf, c['url'], material, enable_ocr=True): c['url']
+                           for c in scan_candidates}
+            for f in as_completed(ocr_futures):
+                try:
+                    recognized = f.result()
+                    if recognized.get('pdf_verified'):
+                        validated[ocr_futures[f]] = recognized
+                except Exception as exc:
+                    # The original PDF is still known to exist; retain it and
+                    # allow re-running OCR via the inspect button.
+                    validated[ocr_futures[f]]['ocr_status'] = 'Повторная загрузка для OCR не удалась: ' + tidy(str(exc), 150)
+    if discarded:
+        errors.append(f'Исключено недоступных или повреждённых PDF: {discarded}.')
+    if not to_verify:
+        errors.append('Поисковая система не вернула проверяемых PDF-ссылок.')
 
     result = []
-    for hit in ranked:
+    for hit in to_verify:
         url = hit['url']
-        is_file = bool(hit.get('force_pdf') or re.search(r'\.pdf(?:[?#]|$)', url, re.I))
-        info = metadata.get(url, {})
-        source_text = info.get('text', '')
-        detected_type = info.get('detected_type') or guess_type(hit['title'] + ' ' + hit['snippet'])
+        info = validated.get(url)
+        if not info:
+            continue
+        detected_type = info.get('detected_type', 'unknown')
+        if detected_type == 'unknown':
+            detected_type = guess_type(hit['title'] + ' ' + hit['snippet'])
         if dtype != 'all' and detected_type not in (dtype, 'unknown'):
             continue
-        status, explanation = assess_match(material, source_text,
-                                           hit['title'] + ' ' + hit['snippet'],
-                                           info.get('pdf_read', False))
+        status, explanation = assess_match(material, info.get('text', ''),
+                                           hit['title'], info.get('pdf_read', False))
         supplement_conflict, supplement_notes = check_supplier_and_standard(manufacturer, gost, info)
         if supplement_conflict:
             status = 'Возможное расхождение'
         if supplement_notes:
             explanation = '; '.join(filter(None, [explanation, *supplement_notes]))
+        number = info.get('number', '')
+        kind = DOC_TYPES.get(detected_type, 'Вид документа не установлен')
+        header = (f'{kind} № {number}' if number else
+                  hit['title'] or info.get('pdf_filename') or 'PDF-документ')
+        resolved = info.get('resolved_url', url)
         result.append({
-            'title': hit['title'] or ('PDF-документ' if is_file else 'Страница с документами'),
+            'title': tidy(header, 220),
             'requested_material': material,
             'material_in_document': info.get('material_in_document', ''),
             'gost_in_document': info.get('gost_in_document', ''),
-            'document_type': DOC_TYPES.get(detected_type, 'Не установлен'),
-            'document_type_verified': info.get('pdf_read', False) and info.get('detected_type', 'unknown') != 'unknown',
-            'document_number': info.get('number', ''),
+            'document_type': kind,
+            'document_type_verified': info.get('pdf_read', False) and info.get('detected_type') != 'unknown',
+            'document_number': number,
             'document_date': info.get('date', ''),
             'valid_until': info.get('valid_until', ''),
             'pdf_pages': info.get('pdf_pages', ''),
             'pdf_bytes': info.get('pdf_bytes', ''),
-            'pdf_filename': info.get('pdf_filename', extract_pdf_filename(url)),
+            'pdf_filename': info.get('pdf_filename', '') or extract_pdf_filename(resolved),
             'pdf_title': info.get('pdf_title', ''),
             'ocr_used': info.get('ocr_used', False),
             'ocr_status': info.get('ocr_status', ''),
             'manufacturer': info.get('manufacturer', ''),
             'url': url,
-            'redirect_url': info.get('resolved_url', '') if info.get('resolved_url', url) != url else '',
-            'inspect_token': signer.dumps(url) if is_file else '',
-            'source_page': hit['source_page'],
-            'is_pdf': is_file,
+            'redirect_url': resolved if resolved != url else '',
+            'inspect_token': signer.dumps(url),
+            'source_page': hit.get('source_page', '') if hit.get('source_verified') else '',
+            'is_pdf': True,
+            'pdf_verified': True,
             'pdf_read': info.get('pdf_read', False),
             'pdf_scanned': info.get('pdf_scanned', False),
-            'read_error': info.get('error', ''),
+            'read_error': '',
             'status': status,
             'explanation': explanation,
-            'source_note': ('Распознанный текст скана (OCR)' if info.get('ocr_used') else 'Текст файла PDF') if info.get('pdf_read') else 'Поисковая выдача; реквизиты PDF не подтверждены',
+            'source_note': ('Распознанный текст скана (OCR)' if info.get('ocr_used') else 'Текст файла PDF') if info.get('pdf_read') else 'PDF открылся, текст не распознан',
             'snippet': hit['snippet'],
         })
         if len(result) >= limit:
@@ -764,6 +865,34 @@ def search_api():
                     'notice': 'Совпадение признаков не означает подтверждения подлинности, срока действия или принадлежности конкретной партии.'})
 
 
+@app.route('/api/file')
+def download_checked_pdf():
+    url = request.args.get('url', '')[:1800]
+    token = request.args.get('token', '')[:4000]
+    try:
+        if not hmac.compare_digest(url, signer.loads(token, max_age=3600)):
+            raise BadSignature('URL mismatch')
+    except (BadSignature, SignatureExpired):
+        return jsonify({'error': 'Ссылка на скачивание устарела. Повторите поиск.'}), 403
+    if not safe_http_url(url):
+        return jsonify({'error': 'Недопустимая ссылка.'}), 400
+    try:
+        content, _, resolved = safe_request(url, timeout=15)
+        if not content[:1024].lstrip().startswith(b'%PDF-'):
+            return jsonify({'error': 'Источник перестал возвращать PDF.'}), 422
+        with fitz.open(stream=content, filetype='pdf') as doc:
+            if len(doc) == 0:
+                raise ValueError('Пустой PDF')
+        filename = extract_pdf_filename(resolved)
+        if not filename.lower().endswith('.pdf'):
+            filename = 'dokument.pdf'
+        # Don't use arbitrary upstream filename as a response header without sanitization.
+        filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)[:120]
+        return send_file(io.BytesIO(content), as_attachment=True, download_name=filename, mimetype='application/pdf')
+    except Exception as exc:
+        return jsonify({'error': 'Не удалось повторно получить файл: ' + tidy(str(exc), 170)}), 422
+
+
 @app.route('/api/ocr-status')
 def ocr_status_api():
     return jsonify(tesseract_status())
@@ -810,13 +939,14 @@ def response_metadata(info: dict, status: str, explanation: str) -> dict:
         'pdf_pages': info.get('pdf_pages', ''),
         'pdf_bytes': info.get('pdf_bytes', ''),
         'pdf_read': info.get('pdf_read', False),
+        'pdf_verified': info.get('pdf_verified', False),
         'pdf_scanned': info.get('pdf_scanned', False),
         'ocr_used': info.get('ocr_used', False),
         'ocr_status': info.get('ocr_status', ''),
         'read_error': '',
         'status': status,
         'explanation': explanation,
-        'source_note': 'Распознанный текст PDF (OCR)' if info.get('ocr_used') else 'Текст PDF' if info.get('pdf_read') else 'PDF не удалось распознать',
+        'source_note': 'Распознанный текст PDF (OCR)' if info.get('ocr_used') else 'Текст PDF' if info.get('pdf_read') else 'PDF скачан, но текст пока не распознан',
         # URL is intentionally not replaced: signed source URL must remain stable.
     }
 

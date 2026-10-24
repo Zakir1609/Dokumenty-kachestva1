@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=10000
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng \
+    && apt-get install -y --no-install-recommends ca-certificates fonts-dejavu-core tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -18,4 +18,4 @@ RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 EXPOSE 10000
 
-CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 3 --timeout 180 --access-logfile - --error-logfile - app:app"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 3 --timeout 300 --access-logfile - --error-logfile - app:app"]
