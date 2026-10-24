@@ -1,0 +1,9 @@
+Flask>=3.1,<4
+requests>=2.31,<3
+beautifulsoup4>=4.12,<5
+PyMuPDF>=1.25,<2
+ddgs>=9.5,<10
+openpyxl>=3.1,<4
+pytesseract>=0.3.12,<1
+Pillow>=11,<13
+gunicorn>=22,<24
