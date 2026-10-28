@@ -10,6 +10,7 @@ import re
 import secrets
 import socket
 import time
+import tempfile
 from collections import OrderedDict, defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import PurePosixPath
@@ -117,85 +118,97 @@ def fetch(url,max_bytes=MAX_BYTES,timeout=10):
     raise ValueError('Слишком много перенаправлений')
 
 def file_id_and_save(data: bytes) -> str:
-    now=time.monotonic()
+    """Keep short-lived PDFs on temporary disk instead of consuming Render RAM.
+
+    Render filesystem is ephemeral: files only exist in this running instance.
+    """
     fid=secrets.token_urlsafe(16)
+    with tempfile.NamedTemporaryFile(prefix='quality_pdf_',suffix='.pdf',delete=False) as out:
+        out.write(data)
+        path=out.name
+    now=time.monotonic()
     with file_lock:
         for k in list(file_cache):
-            if now-file_cache[k][1]>2400: file_cache.pop(k,None)
-        file_cache[fid]=(data,now)
+            old_path,old_at,old_size=file_cache[k]
+            if now-old_at>2400:
+                file_cache.pop(k,None)
+                try:os.unlink(old_path)
+                except OSError:pass
+        file_cache[fid]=(path,now,len(data))
         file_cache.move_to_end(fid)
-        while sum(len(x[0]) for x in file_cache.values()) > 42*1024*1024:
-            file_cache.popitem(last=False)
+        while sum(v[2] for v in file_cache.values())>150*1024*1024:
+            _,(old_path,_,_)=file_cache.popitem(last=False)
+            try:os.unlink(old_path)
+            except OSError:pass
     return fid
 
 
 def search_queries(material,dtype,mfr,standard):
-    # Two focused queries keep external search traffic and free-Render latency low.
-    extras=' '.join(filter(None,[mfr,standard])).strip()
-    clean=re.sub(r'[«»"“”]', ' ', material)
-    clean=norm_space(clean)
+    """Two non-identical searches: specific request and wider product document.
+
+    A certificate can cover a range of diameters, not the exact queried diameter.
+    """
+    clean=norm_space(re.sub(r'[«»"“”]', ' ', material))
+    extras=norm_space(' '.join(filter(None,[mfr,standard])))
     selected=(DOC_KEYWORDS.get(dtype) or DOC_KEYWORDS['certificate'])[0]
-    phrases=[f'{clean} {selected} pdf {extras}',
-             f'{clean} сертификат паспорт качества файл pdf {extras}']
-    if dtype=='all':
-        phrases[1]=f'{clean} декларация соответствия паспорт качества pdf {extras}'
-    return list(dict.fromkeys(norm_space(q) for q in phrases))[:2]
+    broad=re.sub(r'(?:[Øø∅]|\b(?:d|диаметр)\s*)\s*\d{1,3}\s*(?:мм)?\b',' ',clean,flags=re.I)
+    broad=norm_space(broad) or clean
+    second_type = selected if dtype!='all' else 'сертификат паспорт декларация'
+    return list(dict.fromkeys((norm_space(q) for q in (
+        f'{clean} {selected} pdf {extras}',
+        f'{broad} {second_type} pdf {extras}',
+    ))))
 
 
 def search_hits(queries):
-    """Try lightweight public search sources, without changing the OCR engine.
-
-    DDGS is an unofficial web-search client. Hosting providers may experience
-    CAPTCHA, rate limits or connection timeouts; no availability is guaranteed.
-    """
-    found=[]
+    """Search sources are not proof that a document or its URL works."""
+    found=[]; problems=[]; attempts=0; successful=0
     api_key=os.environ.get('BRAVE_SEARCH_API_KEY','').strip()
-    problems=[]
-    had_success=False
     for q in queries[:2]:
         items=[]
         if api_key:
+            attempts+=1
             try:
                 resp=requests.get('https://api.search.brave.com/res/v1/web/search',
-                    params={'q':q,'count':12,'country':'RU','search_lang':'ru'},
-                    headers={'X-Subscription-Token':api_key,'Accept':'application/json'},timeout=(4,9))
+                    params={'q':q,'count':15,'search_lang':'ru'},
+                    headers={'X-Subscription-Token':api_key,'Accept':'application/json'},timeout=(4,10))
                 resp.raise_for_status()
                 items=[{'href':v.get('url'),'title':v.get('title'),'body':v.get('description')}
                        for v in resp.json().get('web',{}).get('results',[])]
-                had_success=True
+                successful+=1
             except Exception as exc:
                 problems.append(type(exc).__name__)
-                log.warning('Brave Search API failed: %s',type(exc).__name__)
+                log.warning('Search API error: %s',repr(exc)[:240])
         else:
             from ddgs import DDGS
-            # Explicit backends are independent attempts. Stop once useful hits
-            # have been returned; avoid 5-6 searches for each document type.
-            for backend in ('bing','brave'):
+            # Never make a single backend mandatory. Shared cloud IPs can be blocked.
+            for backend in ('auto','google'):
+                attempts+=1
                 try:
-                    with DDGS(timeout=7) as ddgs:
+                    with DDGS(timeout=8) as ddgs:
                         items=ddgs.text(q,region='ru-ru',safesearch='moderate',
                                        max_results=12,backend=backend) or []
-                    had_success=True
+                    successful+=1
                     if items:break
                 except Exception as exc:
                     problems.append(type(exc).__name__)
-                    log.warning('Search provider %s failed: %s',backend,type(exc).__name__)
+                    log.warning('Search %s error: %s',backend,repr(exc)[:240])
         for v in items:
             url=v.get('href') or v.get('url')
             if public_url(url or ''):
-                found.append({'url':url,'title':norm_space(v.get('title','')),
-                              'snippet':norm_space(v.get('body',''))})
-        if found:break
+                found.append({'url':url,'title':norm_space(v.get('title') or ''),
+                              'snippet':norm_space(v.get('body') or v.get('description') or '')})
     unique={}
-    for v in found:unique.setdefault(v['url'].split('#')[0],v)
+    for hit in found:
+        unique.setdefault(hit['url'].split('#')[0],hit)
     warnings=[]
-    if not had_success:
-        warnings.append('Поисковые источники не ответили. Это сбой интернет-поиска, '
-                        'а не подтверждение отсутствия документов. Попробуйте кнопки '
-                        '«Поиск через браузер» или позже повторите запрос.')
-    elif problems and not unique:
-        warnings.append('Поиск выполнен не всеми источниками; подходящие ссылки не получены.')
-    return list(unique.values()),warnings
+    if not successful:
+        warnings.append('Поисковые системы не ответили. Это не означает, что документов нет.')
+    elif not unique:
+        warnings.append('Поисковые системы ответили, но ссылок по запросу не вернули.')
+    elif problems:
+        warnings.append('Часть поисковых источников недоступна; использованы ответы остальных.')
+    return list(unique.values())[:25],warnings
 
 
 def expand_page(hit):
@@ -214,15 +227,36 @@ def expand_page(hit):
                 links.append({'url':url,'title':caption or hit['title'],'snippet':hit['snippet']})
             if len(links)>=25:break
         return links
-    except Exception:return []
+    except Exception:return None
 
 
 def pertinent(text,material):
-    # Only words materially relevant to the product, never borrow the query as a PDF field.
-    qwords=[w[:4] for w in re.findall(r'[а-яa-z0-9]+',material.lower()) if len(w)>=5]
-    if not qwords:return True
-    relevant=sum(1 for w in set(qwords) if w in text.lower())
-    return relevant>=min(2,len(set(qwords)))
+    """Conservative product relevance; no diameter requirement for range certificates."""
+    def norm(x):
+        return x.lower().replace('a500','а500').replace('a400','а400').replace('a600','а600')
+    clean=norm(text)
+    words={w[:4] for w in re.findall(r'[а-яa-z0-9]+',norm(material)) if len(w)>=4
+           and w not in ('документ','паспорт','сертификат','качества')}
+    return not words or any(w in clean for w in words)
+
+
+def link_problem(exc):
+    """A 403/timeout means 'unverified', NEVER 'broken'."""
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        code=exc.response.status_code
+        if code in (404,410):return 'gone'
+        if code in (401,403,429):return 'restricted'
+        return 'http_'+str(code)
+    if isinstance(exc, requests.Timeout):return 'timeout'
+    if isinstance(exc, requests.ConnectionError):return 'connection'
+    if isinstance(exc, ValueError):return 'invalid'
+    return type(exc).__name__.lower()
+
+
+def candidate_link(hit, state, note='', fid=''):
+    return {'url':hit['url'],'title':(hit.get('title') or
+              PurePosixPath(urlsplit(hit['url']).path).name or 'Источник документа')[:190],
+            'state':state, 'note':note[:170], 'id':fid}
 
 
 def material_doc_record(info,source_id,source_url):
@@ -237,91 +271,119 @@ def material_doc_record(info,source_id,source_url):
 
 
 def perform_search(material,dtype,manufacturer,standard):
+    """Never silently erase search results because Render cannot download them.
+
+    Verified PDF and unverified source links are two independent result categories.
+    Unverified links are NOT given invented material/date/manufacturer fields.
+    Definitively dead HTTP 404/410 links are not displayed.
+    """
     queries=search_queries(material,dtype,manufacturer,standard)
     hits,warnings=search_hits(queries)
-    direct=[x for x in hits if re.search(r'\.pdf(?:[?#]|$)',x['url'],re.I)]
-    other=[x for x in hits if x not in direct][:8]
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        futures=[pool.submit(expand_page,h) for h in other]
+    direct=[h for h in hits if re.search(r'\.pdf(?:[?#]|$)',h['url'],re.I)
+            and not re.search(r'(?i)(?:katalog|catalog|каталог|pricelist|price[-_]?list)',h['url']+' '+h['title'])]
+    pages=[h for h in hits if h not in direct][:8]
+    # HTML landing pages can contain PDF buttons, even with non-.pdf URLs.
+    # Keep them as possible source pages if there was no extractable PDF.
+    page_links=[]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures={pool.submit(expand_page,h):h for h in pages}
         for f in as_completed(futures):
-            try:direct.extend(f.result())
-            except Exception:pass
+            hit=futures[f]
+            try:
+                expanded=f.result()
+                direct.extend(expanded)
+                if expanded is not None and not expanded and pertinent(hit['title']+' '+hit['snippet'],material):
+                    page_links.append(hit)
+            except Exception:
+                page_links.append(hit)
     unique={}
-    for x in direct:unique.setdefault(x['url'].split('#')[0],x)
-    # Limit transient PDF memory: a free Render instance has only 512 MB.
-    candidates=list(unique.values())[:12]
-    items=[]; unreadable=0; invalid=0; inappropriate=0
-    # Test the actual bytes. Only return a link if a PDF was fully downloaded and parsed.
+    for h in direct:
+        if public_url(h['url']):unique.setdefault(h['url'].split('#')[0],h)
+    candidates=sorted(unique.values(), key=lambda h: (pertinent(h['title']+' '+h['snippet'],material),
+        any(x in h['title'].lower() for x in ('сертификат','декларация','паспорт'))), reverse=True)[:12]
+    items=[]; sources=[]; reasons={}; ignored=0; scanned=0
+    def note(reason):
+        reasons[reason]=reasons.get(reason,0)+1
     def probe(hit):
         try:
-            data,kind,actual=fetch(hit['url'],max_bytes=6*1024*1024,timeout=13)
-            if not data.lstrip()[:1024].startswith(b'%PDF-'):return None,'not_pdf'
-            label=PurePosixPath(urlsplit(actual).path).name or 'document.pdf'
-            info=inspect_document(data,material,label,use_ocr=False)
+            data,kind,actual=fetch(hit['url'],max_bytes=6*1024*1024,timeout=10)
+            if not data.lstrip()[:1024].startswith(b'%PDF-'):
+                return (hit,None,None,None),'not_pdf'
+            filename=PurePosixPath(urlsplit(actual).path).name or 'document.pdf'
+            info=inspect_document(data,material,filename,use_ocr=False)
             return (hit,data,info,actual),None
         except Exception as exc:
-            log.info('Candidate inaccessible %s (%s)',urlsplit(hit['url']).hostname,type(exc).__name__)
-            return None,'broken'
+            reason=link_problem(exc)
+            log.warning('PDF check %s: %s (%s)',urlsplit(hit['url']).hostname,reason,str(exc)[:125])
+            return (hit,None,None,None),reason
+
     checked=[]
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures=[pool.submit(probe,h) for h in candidates]
         for f in as_completed(futures):
             item,problem=f.result()
-            if item:checked.append(item)
-            elif problem=='broken':unreadable+=1
-            else:invalid+=1
-    # Search candidates must be real PDFs and actual quality documents.
-    # OCR is local and serial; no external AI usage or charge.
-    ocr_budget = max(0,min(6,int(os.getenv('OCR_SEARCH_LIMIT','3'))))
-    checked.sort(key=lambda item:(bool(item[2].get('type')),
-                     'сертификат' in item[0]['title'].lower(),
-                     'паспорт' in item[0]['title'].lower()),reverse=True)
-    ocr_count = 0
+            hit,data,info,actual=item
+            if problem:
+                note(problem)
+                if problem not in ('gone','invalid','not_pdf'):
+                    sources.append(candidate_link(hit,'unverified','Не удалось проверить PDF на сервере: '+{'restricted':'доступ ограничен','timeout':'время ожидания истекло','connection':'сбой соединения'}.get(problem,problem)+'. Можно попробовать открыть ссылку в браузере.'))
+            else:
+                checked.append(item)
+    checked.sort(key=lambda x:(bool(x[2].get('type')),
+                 any(k in x[0]['title'].lower() for k in ('сертификат','декларация','паспорт'))),reverse=True)
+    ocr_budget=max(0,min(2,int(os.getenv('OCR_SEARCH_LIMIT','1'))))
     for hit,data,info,actual in checked:
         filename=info['filename']
-        # Explicitly prevent catalogues from being presented as quality docs.
         if re.search(r'(?i)(?:katalog|catalog|каталог|pricelist|price[-_]?list)',filename):
-            inappropriate+=1
+            ignored+=1
             continue
         if not info['type'] or not info['material']:
-            if ocr_budget<=0:
-                inappropriate+=1
-                continue
-            ocr_budget-=1
-            ocr_count+=1
-            try:
-                info=inspect_document(data,material,filename,use_ocr=True)
-            except RecognitionError as exc:
-                warnings.append('OCR недоступен: '+str(exc)[:130])
-                unreadable+=1
-                continue
-        if not info.get('type') or (dtype!='all' and info['type']!=dtype):
-            inappropriate+=1
-            continue
-        if not info.get('material') or not pertinent(info.get('text','')+' '+info['material'],material):
-            inappropriate+=1
-            continue
-        if manufacturer and info['manufacturer'] not in ('—','') and manufacturer.lower() not in info['manufacturer'].lower():
-            inappropriate+=1
-            continue
+            if ocr_budget:
+                ocr_budget-=1
+                try:info=inspect_document(data,material,filename,use_ocr=True)
+                except RecognitionError as exc:
+                    log.warning('OCR search candidate: %s',str(exc)[:130])
+                    note('ocr')
         fid=file_id_and_save(data)
-        items.append(material_doc_record(info,fid,actual))
-        if len(items)>=15:break
-    if ocr_count and ocr_budget==0 and len(checked)>ocr_count:
-        warnings.append('Лимит OCR-проверок достигнут. Уточните материал или изготовителя для более точного поиска.')
-    if unreadable:
-        warnings.append(f'Скрыты недоступные PDF: {unreadable}.')
-    if inappropriate:
-        warnings.append(f'Исключены каталоги и документы другого вида/материала: {inappropriate}.')
-    if invalid:
-        warnings.append(f'Исключены ссылки без PDF: {invalid}.')
-    return items,warnings
+        if info.get('type') and (dtype=='all' or info['type']==dtype) and \
+           info.get('material') and pertinent(info.get('text','')+' '+info['material'],material) and \
+           (not manufacturer or not info.get('manufacturer') or
+            info['manufacturer']=='—' or manufacturer.lower() in info['manufacturer'].lower()):
+            items.append(material_doc_record(info,fid,actual))
+        else:
+            # Actual PDF was downloaded, but automatic classification is uncertain.
+            # Make the known-good PDF accessible without claiming it matches.
+            if pertinent(hit['title']+' '+hit['snippet'],material) or info.get('type'):
+                sources.append(candidate_link(hit,'downloadable',
+                    'PDF скачан, но его принадлежность запросу не подтверждена.',fid))
+            else:ignored+=1
+        if len(items)>=10:break
+    # Landing pages are clearly separated from PDFs and never labeled verified.
+    for hit in page_links[:6]:
+        if pertinent(hit['title']+' '+hit['snippet'],material):
+            sources.append(candidate_link(hit,'page','Страница из поисковой выдачи; PDF не извлечён.'))
+    distinct={}
+    for h in sources:
+        if public_url(h['url']):distinct.setdefault(h['url'].split('#')[0],h)
+    sources=list(distinct.values())[:16]
+    total=len(candidates)
+    if not items and sources:
+        warnings.append(f'Поиск нашёл {total} PDF-кандидатов, но сервер не подтвердил реквизиты. '
+                        'Ссылки для самостоятельной проверки приведены отдельно.')
+    if reasons:
+        view={'timeout':'тайм-аут','restricted':'доступ ограничен (401/403/429)',
+              'connection':'сбой соединения','gone':'удалённая ссылка (404/410)',
+              'not_pdf':'ссылка ведёт не на PDF', 'ocr':'сбой OCR'}
+        warnings.append('Проверка файлов: '+', '.join(f'{view.get(k,k)} — {v}' for k,v in sorted(reasons.items()))+'.')
+    if ignored:warnings.append(f'Каталоги или неподходящие документы исключены: {ignored}.')
+    return items,warnings,sources,{'found_links':len(hits),'pdf_candidates':total,
+                                  'verified_pdf':len(items),'unverified_sources':len(sources)}
 
 @app.get('/')
 def index():return render_template('index.html',types=DOC_SELECT)
 
 @app.get('/health')
-def health():return jsonify({'ok':True,'version':'quality-docs-v8.3-search-fallback','recognition':recognition_status()})
+def health():return jsonify({'ok':True,'version':'quality-docs-v9-source-visibility','recognition':recognition_status()})
 
 @app.post('/api/search')
 def api_search():
@@ -334,12 +396,12 @@ def api_search():
     if dtype not in DOC_SELECT:return jsonify({'error':'Некорректный вид документа'}),400
     if not job_semaphore.acquire(blocking=False):return jsonify({'error':'Поиск занят. Попробуйте повторить запрос.'}),429
     try:
-        results,warnings=perform_search(material,dtype,manufacturer,standard)
+        results,warnings,sources,stats=perform_search(material,dtype,manufacturer,standard)
     except Exception:
         log.exception('search failed')
         return jsonify({'error':'Поиск не выполнен из-за ошибки сервера. Повторите попытку.'}),503
     finally:job_semaphore.release()
-    return jsonify({'results':results,'warnings':warnings,'search_status':('unavailable' if any('Поисковые источники не ответили' in w for w in warnings) else 'completed')})
+    return jsonify({'results':results,'warnings':warnings,'sources':sources,'stats':stats,'search_status':('unavailable' if any('Поисковые системы не ответили' in w for w in warnings) else 'completed')})
 
 @app.post('/api/upload')
 def api_upload():
@@ -365,9 +427,9 @@ def api_upload():
 def api_file(file_id):
     with file_lock:
         record=file_cache.get(file_id)
-    if record is None or time.monotonic()-record[1]>2400:
-        return jsonify({'error':'Срок хранения временной копии истёк. Повторите поиск.'}),404
-    return send_file(io.BytesIO(record[0]), mimetype='application/pdf',as_attachment=True,download_name='document.pdf')
+    if record is None or time.monotonic()-record[1]>2400 or not os.path.isfile(record[0]):
+        return jsonify({'error':'Временная копия недоступна. Повторите поиск.'}),404
+    return send_file(record[0], mimetype='application/pdf',as_attachment=True,download_name='document.pdf')
 
 @app.post('/api/export')
 def api_export():
