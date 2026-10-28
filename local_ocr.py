@@ -36,15 +36,17 @@ def recognition_status() -> dict:
 
 def _make_engine():
     try:
-        from rapidocr import RapidOCR
+        # RapidOCR >=3.10 expects Enum instances in params (not strings).
+        # Verified against the upstream RapidOCR parameter reference.
+        from rapidocr import RapidOCR, EngineType, ModelType, OCRVersion, LangRec
         return RapidOCR(params={
-            'Det.engine_type': 'onnxruntime',
-            'Det.model_type': 'mobile',
-            'Det.ocr_version': 'PP-OCRv4',
-            'Rec.engine_type': 'onnxruntime',
-            'Rec.lang_type': 'cyrillic',
-            'Rec.model_type': 'mobile',
-            'Rec.ocr_version': 'PP-OCRv5',
+            'Det.engine_type': EngineType.ONNXRUNTIME,
+            'Det.model_type': ModelType.MOBILE,
+            'Det.ocr_version': OCRVersion.PPOCRV4,
+            'Rec.engine_type': EngineType.ONNXRUNTIME,
+            'Rec.lang_type': LangRec.CYRILLIC,
+            'Rec.model_type': ModelType.MOBILE,
+            'Rec.ocr_version': OCRVersion.PPOCRV5,
             'Global.use_cls': False,
             'Global.use_preprocess_img': False,
         })
