@@ -130,40 +130,72 @@ def file_id_and_save(data: bytes) -> str:
 
 
 def search_queries(material,dtype,mfr,standard):
-    extras=' '.join(filter(None,[mfr,standard]))
-    doc_keys=list(DOC_KEYWORDS) if dtype=='all' else [dtype]
-    q=[f'"{material}" "{DOC_KEYWORDS[k][0]}" {extras} pdf' for k in doc_keys]
-    # Broader variants improve recall for changed morphology/compound descriptions.
-    broader=re.sub(r'[«»"“”]', '', material)
-    q.append(f'{broader} {DOC_KEYWORDS[doc_keys[0]][0]} {extras} filetype:pdf')
-    return list(dict.fromkeys(q))[:6]
+    # Two focused queries keep external search traffic and free-Render latency low.
+    extras=' '.join(filter(None,[mfr,standard])).strip()
+    clean=re.sub(r'[«»"“”]', ' ', material)
+    clean=norm_space(clean)
+    selected=(DOC_KEYWORDS.get(dtype) or DOC_KEYWORDS['certificate'])[0]
+    phrases=[f'{clean} {selected} pdf {extras}',
+             f'{clean} сертификат паспорт качества файл pdf {extras}']
+    if dtype=='all':
+        phrases[1]=f'{clean} декларация соответствия паспорт качества pdf {extras}'
+    return list(dict.fromkeys(norm_space(q) for q in phrases))[:2]
 
 
 def search_hits(queries):
-    found=[]; errors=[]
+    """Try lightweight public search sources, without changing the OCR engine.
+
+    DDGS is an unofficial web-search client. Hosting providers may experience
+    CAPTCHA, rate limits or connection timeouts; no availability is guaranteed.
+    """
+    found=[]
     api_key=os.environ.get('BRAVE_SEARCH_API_KEY','').strip()
-    for q in queries:
-        try:
-            if api_key:
+    problems=[]
+    had_success=False
+    for q in queries[:2]:
+        items=[]
+        if api_key:
+            try:
                 resp=requests.get('https://api.search.brave.com/res/v1/web/search',
                     params={'q':q,'count':12,'country':'RU','search_lang':'ru'},
-                    headers={'X-Subscription-Token':api_key,'Accept':'application/json'},timeout=16)
+                    headers={'X-Subscription-Token':api_key,'Accept':'application/json'},timeout=(4,9))
                 resp.raise_for_status()
-                items=[{'href':x.get('url'),'title':x.get('title'),'body':x.get('description')} for x in resp.json().get('web',{}).get('results',[])]
-            else:
-                from ddgs import DDGS
-                with DDGS(timeout=12) as ddgs:
-                    items=ddgs.text(q,region='ru-ru',safesearch='moderate',max_results=15)
-            for v in items or []:
-                url=v.get('href') or v.get('url')
-                if public_url(url or ''):
-                    found.append({'url':url,'title':norm_space(v.get('title','')),'snippet':norm_space(v.get('body',''))})
-        except Exception as exc:
-            log.warning('Search API: %s',type(exc).__name__)
-            errors.append(f'Поиск временно недоступен: {type(exc).__name__}')
+                items=[{'href':v.get('url'),'title':v.get('title'),'body':v.get('description')}
+                       for v in resp.json().get('web',{}).get('results',[])]
+                had_success=True
+            except Exception as exc:
+                problems.append(type(exc).__name__)
+                log.warning('Brave Search API failed: %s',type(exc).__name__)
+        else:
+            from ddgs import DDGS
+            # Explicit backends are independent attempts. Stop once useful hits
+            # have been returned; avoid 5-6 searches for each document type.
+            for backend in ('bing','brave'):
+                try:
+                    with DDGS(timeout=7) as ddgs:
+                        items=ddgs.text(q,region='ru-ru',safesearch='moderate',
+                                       max_results=12,backend=backend) or []
+                    had_success=True
+                    if items:break
+                except Exception as exc:
+                    problems.append(type(exc).__name__)
+                    log.warning('Search provider %s failed: %s',backend,type(exc).__name__)
+        for v in items:
+            url=v.get('href') or v.get('url')
+            if public_url(url or ''):
+                found.append({'url':url,'title':norm_space(v.get('title','')),
+                              'snippet':norm_space(v.get('body',''))})
+        if found:break
     unique={}
     for v in found:unique.setdefault(v['url'].split('#')[0],v)
-    return list(unique.values()),list(dict.fromkeys(errors))
+    warnings=[]
+    if not had_success:
+        warnings.append('Поисковые источники не ответили. Это сбой интернет-поиска, '
+                        'а не подтверждение отсутствия документов. Попробуйте кнопки '
+                        '«Поиск через браузер» или позже повторите запрос.')
+    elif problems and not unique:
+        warnings.append('Поиск выполнен не всеми источниками; подходящие ссылки не получены.')
+    return list(unique.values()),warnings
 
 
 def expand_page(hit):
@@ -289,7 +321,7 @@ def perform_search(material,dtype,manufacturer,standard):
 def index():return render_template('index.html',types=DOC_SELECT)
 
 @app.get('/health')
-def health():return jsonify({'ok':True,'version':'quality-docs-v8','recognition':recognition_status()})
+def health():return jsonify({'ok':True,'version':'quality-docs-v8.3-search-fallback','recognition':recognition_status()})
 
 @app.post('/api/search')
 def api_search():
@@ -307,7 +339,7 @@ def api_search():
         log.exception('search failed')
         return jsonify({'error':'Поиск не выполнен из-за ошибки сервера. Повторите попытку.'}),503
     finally:job_semaphore.release()
-    return jsonify({'results':results,'warnings':warnings})
+    return jsonify({'results':results,'warnings':warnings,'search_status':('unavailable' if any('Поисковые источники не ответили' in w for w in warnings) else 'completed')})
 
 @app.post('/api/upload')
 def api_upload():

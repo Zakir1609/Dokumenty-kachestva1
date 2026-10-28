@@ -38,6 +38,12 @@ footer{padding:24px 0;border-top:1px solid var(--line);color:#6a7f95;font-size:1
   <div class="field"><label for="standard">ГОСТ / ТУ (для поиска)</label><input id="standard" placeholder="Например, ГОСТ 34028-2016"></div>
  </div>
  <div class="buttons"><button id="search-btn" class="primary" type="submit">⌕ Найти документы</button><button class="secondary" type="reset">Очистить</button><span class="small">Отображаются только документы, которые сервер смог скачать и проверить.</span></div>
+ <div class="help" id="manual-search" style="margin-top:14px">
+  Если автоматический поиск недоступен, откройте результаты в браузере:
+  <a id="yandex-link" href="https://ya.ru" target="_blank" rel="noopener noreferrer">Поиск в Яндексе</a>
+  · <a id="google-link" href="https://google.com" target="_blank" rel="noopener noreferrer">Поиск в Google</a>.
+  Найденный PDF можно скачать и проверить в форме ниже.
+ </div>
 </form>
 <section class="panel">
  <h2>Проверить PDF с компьютера</h2>
@@ -66,12 +72,26 @@ function draw(){
   if(item.warning){const w=document.createElement('div');w.className='tag';w.textContent=item.warning;first.append(w)}
   addCell(tr,item.number||'б/н');addCell(tr,item.date||'—');addCell(tr,item.manufacturer||'—');tbody.append(tr)}
 }
+function updateManualSearch(){
+ const material=$('material').value.trim();
+ const kind=$('kind').selectedOptions[0]?.textContent||'';
+ const maker=$('manufacturer').value.trim();
+ const standard=$('standard').value.trim();
+ const query=[material,kind==='Все документы'?'сертификат паспорт декларация':kind,maker,standard,'PDF'].filter(Boolean).join(' ');
+ $('yandex-link').href='https://yandex.ru/search/?text='+encodeURIComponent(query);
+ $('google-link').href='https://www.google.com/search?q='+encodeURIComponent(query);
+}
+for(const id of ['material','kind','manufacturer','standard']){
+ $(id).addEventListener('input',updateManualSearch);
+ $(id).addEventListener('change',updateManualSearch);
+}
+updateManualSearch();
 $('search-form').addEventListener('submit',async e=>{
  e.preventDefault();clearMessages();const btn=$('search-btn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>Поиск документов…';$('summary').textContent='Идёт проверка PDF-файлов. Поиск может занять время.';
  try{
   const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({material:$('material').value,type:$('kind').value,manufacturer:$('manufacturer').value,standard:$('standard').value})});
   const data=await response.json();if(!response.ok)throw new Error(data.error||'Ошибка поиска');
-  results=data.results||[];draw();$('summary').textContent=results.length?'Найдены и проверены PDF с указанными реквизитами.':'Подходящих доступных документов не найдено.';
+  results=data.results||[];draw();$('summary').textContent=results.length?'Найдены и проверены PDF с указанными реквизитами.':data.search_status==='unavailable'?'Поисковая система не ответила. Результат поиска неизвестен.':'Среди полученных и проверенных PDF подходящих документов не найдено.';
   if(data.warnings?.length)setMessage(data.warnings.join('\n'),false);
  }catch(err){setMessage(err.message);$('summary').textContent='Ошибка поиска.'}
  finally{btn.disabled=false;btn.textContent='⌕ Найти документы'}
@@ -86,7 +106,7 @@ $('upload-btn').addEventListener('click',async()=>{
  else if(data.result.warning)setMessage(data.result.warning,false);
  }catch(err){setMessage(err.message)}finally{btn.disabled=false;btn.textContent='Распознать документ'}
 });
-$('search-form').addEventListener('reset',()=>{clearMessages()});
+$('search-form').addEventListener('reset',()=>{clearMessages();setTimeout(updateManualSearch,0)});
 $('excel-btn').addEventListener('click',async()=>{
  const btn=$('excel-btn');btn.disabled=true;try{const response=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({results})});if(!response.ok)throw new Error('Не удалось подготовить Excel');
  const blob=await response.blob(),url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='dokumenty_kachestva.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
